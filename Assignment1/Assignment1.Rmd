@@ -1,0 +1,203 @@
+---
+title: "Assignment 1"
+date: "`r Sys.Date()`"
+output:  pdf_document
+---
+
+```{r DocSetup, include = FALSE}
+require(knitr)
+opts_chunk$set(echo = FALSE, warning = FALSE)
+opts_chunk$set(fig.width = 8, fig.height = 6, fig.align = "center")
+```
+
+
+
+```{r }
+################################################################################
+#
+# Question 1
+#
+################################################################################
+
+```{r Q1Setup, include = FALSE}
+source("Question1/1setup.R")
+```
+
+
+## Question 1: Inference for the binomial parameter:
+(a) Develop an R function to calculate HPD intervals for data $(x,n)$, given a \emph{beta(a,b)} prior.
+
+```{r Question1a, eval = FALSE}
+solve.HPD.beta = function(h, y, n, a, b, p){
+  apost <<- y + a
+  bpost <<- n - y + b
+  post_mode = (y + a - 1)/(n + a + b - 2)
+  lt = uniroot(f=function(x){ dbeta(x,apost, bpost) - h},
+               lower=0, upper=mode)$root
+  ut = uniroot(f=function(x){ dbeta(x,apost, bpost) - h},
+               lower=mode, upper=1)$root
+  coverage = pbeta(ut, apost, bpost) - pbeta(lt, apost, bpost)
+  hpdval = abs(p-coverage)
+  results <<- data.frame(lt,ut,coverage,h)
+  return(hpdval)}
+
+  # if (plot) {
+  #   th = seq(0, 1, length=5000)
+  #   plot(th, dbeta(th, apost, bpost),
+  #        t="l", lty=1,xlab=expression(theta),
+  #        ylab="posterior Density", ...)
+  #   abline(h=h)
+  #   segments(ut,0,ut,dbeta(ut,apost,bpost))
+  #   segments(lt,0,lt,dbeta(lt,apost,bpost))
+  #   title(bquote(paste("p(", .(round(lt, 5))," < ", theta, " < ",
+  #                      .(round(ut,5)), " | " , y, ") = ",
+  #                      .(round(coverage, 5)), ")")))
+
+
+y=23; n=80; a=2; b=17; p=0.95
+upper <- max(dbeta(seq(0, 1, length=500),y + a,n-y+b))
+interval <- seq(0,upper,by = 0.00001)
+
+h <- optimize(solve.HPD.beta,
+         interval = interval,
+         lower = min(interval),
+         tol = .Machine$double.eps,
+         y=y,
+         n=n,
+         a=a,
+         b=b,
+         p=p)$minimum
+
+  th = seq(0, 1, length=5000)
+  plot(th, dbeta(th, apost, bpost),
+       t="l", lty=1,xlab=expression(theta),
+       ylab="posterior Density")
+  abline(h=h)
+  segments(ut,0,ut,dbeta(ut,apost,bpost))
+  segments(lt,0,lt,dbeta(lt,apost,bpost))
+  title(bquote(paste("p(", .(round(lt, 5))," < ", theta, " < ",
+                     .(round(ut,5)), " | " , y, ") = ",
+                     .(round(coverage, 5)), ")")))
+```
+
+
+Running the above code gives the following output
+
+```{r Q1aplot, eval = FALSE}
+source("Question1/1a.R")
+```
+
+
+(b) Reproduce Agresti \& Coull's (1998) Figure 4 $(n = 10)$, and replicate for the Score and Bayes-Laplace \& Jeffreys HPD intervals
+
+```{r Question1bData, echo = FALSE, cache = TRUE}
+n <- 10
+a <- 0.05
+p <- seq(0.0001,0.9999,1/1000)
+z <- abs(qnorm(.5*a,0,1))
+source("Question1/1bData.R")
+```
+
+
+
+```{r Question1bChart, echo = FALSE}
+source("Question1/1bChart.R")
+q1bchart
+```
+
+
+(c) Repeat (b) for $n = 50$.
+
+```{r Question1cData, echo = FALSE, cache = TRUE}
+n <- 50
+a <- 0.05
+p <- seq(0.0001,0.9999,1/1000)
+z <- abs(qnorm(.5*a,0,1))
+source("Question1/1cData.R")
+```
+
+
+
+```{r Question1cChart, echo = FALSE}
+source("Question1/1cChart.R")
+q1cchart
+```
+
+
+(d) Compare the minimum coverage of the six graphs at (c)
+
+```{r Question1d}
+source("Question1/1d.R")
+```
+
+
+(e) The adjusted Wald interval appears to perform well with respect to frequentist coverage, if close to nominal combined with reasonable minimum coverage is aimed for.
+From a Bayesian point of view, performance of individual intervals is just as, if not more, important. 
+Given $x = 0$, compare the adjusted Wald interval with the exact \& Score intervals (all two-sided), and with the Bayes-Laplace \& Jeffreys HPD intervals, for a range of values of $n$ and $\alpha$, comment on its limitations, and give an appropriate graphical illustration.
+
+```{r Question1e}
+source("Question1/1e.R")
+```
+
+
+\newpage
+
+
+```{r }
+################################################################################
+#
+# Question 2
+#
+################################################################################
+
+```{r Q2Setup, include = FALSE}
+rm(list = ls())
+source("Question2/2setup.R")
+opts_chunk$set(warning = FALSE)
+opts_chunk$set(fig.width = 5, fig.height = 3, fig.align = "center")
+```
+
+
+## Question 2: Inference for the Cauchy parameter:
+
+(a) Develop an R function to find percentiles of a (general) Cauchy posterior as discussed by Jaynes (1976, Example 6) and Box \& Tiao (1973, p.64), to be used for the examples below.
+
+```{r Question2a, eval = FALSE}
+source("Question2/2a.R")
+```
+
+
+(b) Consider Jaynes' example of $n = 2$ observations $(3, 5)$: plot the posterior and calculate the 90\% central credible interval.
+Explain why it is quite different from the confidence interval derived by Jaynes (p.202).
+
+```{r Question2b}
+source("Question2/2b.R")
+Q2bChart
+```
+
+
+(c) Consider Box \& Tiao's example of $n = 5$ observations $(11.4, 7.3, 9.8, 13.7, 10.6)$: plot the posterior and calculate 95\% central and HPD credible intervals and check $Pr[\theta < 11.5]$ given by Box \& Tiao.
+
+```{r Question2c}
+source("Question2/2c.R")
+Q2cChart
+```
+
+
+(d) Consider Berger's (1985, p.141) example of $n = 5$ observations $(4.0, 5.5, 7.5, 4.5, 3.0)$: calculate 95\% central and HPD credible intervals, with and without Berger's restriction $(\theta > 0)$.
+
+```{r Question2d}
+source("Question2/2d.R")
+Q2dChart
+```
+
+
+(e) Clearly, Berger's restriction $(\theta > 0)$ will sometimes lead to a posterior quite different from the unrestricted posterior.
+Plot this restricted posterior for the hypothetical negative version of Berger's example: i.e. $(-4.0, -5.5, -7.5, -4.5, -3.0)$, and calculate the 95\% HPD interval.
+
+```{r Question2e}
+source("Question2/2e.R")
+Q2eChart
+```
+
+

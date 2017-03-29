@@ -123,7 +123,7 @@ source("Question1/1e.R")
 #+ Q2Setup, include = FALSE
 rm(list = ls())
 source("Question2/2setup.R")
-opts_chunk$set(warning = FALSE)
+opts_chunk$set(warning = FALSE, echo = TRUE)
 opts_chunk$set(fig.width = 5, fig.height = 3, fig.align = "center")
 #'
 #' ## Question 2: Inference for the Cauchy parameter:
@@ -131,26 +131,112 @@ opts_chunk$set(fig.width = 5, fig.height = 3, fig.align = "center")
 #' (a) Develop an R function to find percentiles of a (general) Cauchy posterior as discussed by Jaynes (1976, Example 6) and Box \& Tiao (1973, p.64), to be used for the examples below.
 #+ Question2a, eval = FALSE
 source("Question2/2a.R")
+CauchyPercentage <- function(x, # a vector of samples
+                             p, # a vector of possible parameters
+                             y = NULL # a value to test Pr[p < y]
+) {
+  cauchydens <- function(x,p){
+    
+    cauchydist <- function(x,p) {
+      H = vector(mode = "numeric",length = length(x))
+      for(i in 1:length(x)){
+        H[i] = (1+(x[i] - p)^2)^(-1)
+      }
+      return(prod(H))
+    }
+    dens = vapply(p,cauchydist,min(p), x = x)
+    c = (integrate(dens, -Inf, Inf)$value)^(-1)
+    data.frame(vparams = p, postdens = c*dens(p))
+  }
+  
+  df = cauchydens(x,p)
+  
+  yind = ifelse(length(which(df$vparams == y))==1,
+                which(df$vparams == y),
+                max(which(df$vparams < y)))
+  
+  plot(df$vparams, df$postdens, type = 'l')
+  abline(v = df$vparams[yind])
+  abline(h = df[yind,"postdens"])
+  
+  cumdist = c*integrate(dens,-Inf,y)$value
+  
+  return((c(yind,df[yind,"postdens"],cumdist)))
+}
+
+CauchyHPD <- function(x, # vector of samples 
+                      p, # vector of possible parameter values
+                      alpha = 0.95, # HPD interval value
+                      tol = 0.0001) { # level of tolerance for exact HPD interval
+  
+  cauchydens <- function(x,p){
+    
+    cauchydist <- function(x,p) {
+      H = vector(mode = "numeric",length = length(x))
+      for(i in 1:length(x)){
+        H[i] = (1+(x[i] - p)^2)^(-1)
+      }
+      return(prod(H))
+    }
+    dens = function(p) vapply(p,cauchydist,min(p), x = x)
+    c = (integrate(dens, -Inf, Inf)$value)^(-1)
+    data.frame(vparams = p, postdens = c*dens(p))
+  }
+  
+  df = cauchydens(x,p)
+  
+  cumdist = cumsum(df$postdens)*diff(df$vparams)[1]
+  post_median = which.min(abs(cumdist-0.5))
+  
+  HPDlimits <- function(post_dens) { ## find lower and upper values for which
+    ## prob dens is closest to target value
+    lower = which.min(abs(df$postdens[1:post_median]-post_dens))
+    upper = which.min(abs(df$postdens[(post_median+1):length(df$postdens)]-post_dens))+post_median
+    limits = c(lower,upper)
+  }
+  
+  HPDlimitarea <- function(post_dens) {
+    limitints = HPDlimits(post_dens)
+    limitarea = sum(df$postdens[limitints[1]:limitints[2]])*diff(df$vparams)[1]
+  }
+  ## find credible interval
+  v2 = seq(0,max(df$postdens),by=tol)
+  vals = sapply(v2,HPDlimitarea)
+  w = which.min(abs(vals-alpha))
+  r = c(df$vparams[HPDlimits(v2[w])])
+  names(r) = c("lower","upper")
+  par(mfrow = c(1,2))
+  plot(df$vparams, cumdist, type = 'l')
+  abline(h = 0.5)
+  abline(v = df$vparams[post_median], col = 'red')
+  abline(v = r["upper"], col = 'blue')
+  abline(v = r["lower"], col = 'blue')
+  plot(df$vparams, df$postdens, type = 'l')
+  abline(v = df$vparams[post_median], col = 'red')
+  abline(h = df[HPDlimits(v2[w])[1],"postdens"])
+  abline(v = r["upper"], col = 'blue')
+  abline(v = r["lower"], col = 'blue')
+  return(r)
+}
 #'
 #' (b) Consider Jaynes' example of $n = 2$ observations $(3, 5)$: plot the posterior and calculate the 90\% central credible interval.
 #' Explain why it is quite different from the confidence interval derived by Jaynes (p.202).
 #+ Question2b
 source("Question2/2b.R")
-Q2bChart
 #'
 #' (c) Consider Box \& Tiao's example of $n = 5$ observations $(11.4, 7.3, 9.8, 13.7, 10.6)$: plot the posterior and calculate 95\% central and HPD credible intervals and check $Pr[\theta < 11.5]$ given by Box \& Tiao.
 #+ Question2c
 source("Question2/2c.R")
-Q2cChart
+
 #'
 #' (d) Consider Berger's (1985, p.141) example of $n = 5$ observations $(4.0, 5.5, 7.5, 4.5, 3.0)$: calculate 95\% central and HPD credible intervals, with and without Berger's restriction $(\theta > 0)$.
 #+ Question2d
 source("Question2/2d.R")
-Q2dChart
+
 #'
 #' (e) Clearly, Berger's restriction $(\theta > 0)$ will sometimes lead to a posterior quite different from the unrestricted posterior.
 #' Plot this restricted posterior for the hypothetical negative version of Berger's example: i.e. $(-4.0, -5.5, -7.5, -4.5, -3.0)$, and calculate the 95\% HPD interval.
 #+ Question2e
 source("Question2/2e.R")
-Q2eChart
+
 #'

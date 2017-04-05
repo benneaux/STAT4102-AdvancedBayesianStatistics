@@ -90,7 +90,7 @@ source("Question1/1a.R")
 
 (b) Reproduce Agresti \& Coull's (1998) Figure 4 $(n = 10)$, and replicate for the Score and Bayes-Laplace \& Jeffreys HPD intervals
 
-```{r Question1bData, echo = FALSE, cache = TRUE}
+```{r Question1bData, echo = FALSE, cache = FALSE}
 n <- 10
 a <- 0.05
 p <- seq(0.0001,0.9999,1/1000)
@@ -108,7 +108,7 @@ q1bchart
 
 (c) Repeat (b) for $n = 50$.
 
-```{r Question1cData, echo = FALSE, cache = TRUE}
+```{r Question1cData, echo = FALSE, cache = FALSE}
 n <- 50
 a <- 0.05
 p <- seq(0.0001,0.9999,1/1000)
@@ -128,6 +128,8 @@ q1cchart
 
 ```{r Question1d}
 source("Question1/1d.R")
+kable(Q1dCoverage10)
+kable(Q1dCoverage30)
 ```
 
 
@@ -135,7 +137,7 @@ source("Question1/1d.R")
 From a Bayesian point of view, performance of individual intervals is just as, if not more, important. 
 Given $x = 0$, compare the adjusted Wald interval with the exact \& Score intervals (all two-sided), and with the Bayes-Laplace \& Jeffreys HPD intervals, for a range of values of $n$ and $\alpha$, comment on its limitations, and give an appropriate graphical illustration.
 
-```{r Question1e}
+```{r Question1e, eval = FALSE}
 source("Question1/1e.R")
 ```
 
@@ -153,7 +155,7 @@ source("Question1/1e.R")
 ```{r Q2Setup, include = FALSE}
 rm(list = ls())
 source("Question2/2setup.R")
-opts_chunk$set(warning = FALSE, echo = TRUE)
+opts_chunk$set(warning = FALSE, echo = TRUE, eval = FALSE)
 opts_chunk$set(fig.width = 5, fig.height = 3, fig.align = "center")
 ```
 

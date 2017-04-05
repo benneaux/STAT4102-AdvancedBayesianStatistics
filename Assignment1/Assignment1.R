@@ -79,7 +79,7 @@ h <- optimize(solve.HPD.beta,
 source("Question1/1a.R")
 #'
 #' (b) Reproduce Agresti \& Coull's (1998) Figure 4 $(n = 10)$, and replicate for the Score and Bayes-Laplace \& Jeffreys HPD intervals
-#+ Question1bData, echo = FALSE, cache = TRUE
+#+ Question1bData, echo = FALSE, cache = FALSE
 n <- 10
 a <- 0.05
 p <- seq(0.0001,0.9999,1/1000)
@@ -91,7 +91,7 @@ source("Question1/1bChart.R")
 q1bchart
 #'
 #' (c) Repeat (b) for $n = 50$.
-#+ Question1cData, echo = FALSE, cache = TRUE
+#+ Question1cData, echo = FALSE, cache = FALSE
 n <- 50
 a <- 0.05
 p <- seq(0.0001,0.9999,1/1000)
@@ -105,11 +105,13 @@ q1cchart
 #' (d) Compare the minimum coverage of the six graphs at (c)
 #+ Question1d
 source("Question1/1d.R")
+kable(Q1dCoverage10)
+kable(Q1dCoverage30)
 #'
 #' (e) The adjusted Wald interval appears to perform well with respect to frequentist coverage, if close to nominal combined with reasonable minimum coverage is aimed for.
 #' From a Bayesian point of view, performance of individual intervals is just as, if not more, important. 
 #' Given $x = 0$, compare the adjusted Wald interval with the exact \& Score intervals (all two-sided), and with the Bayes-Laplace \& Jeffreys HPD intervals, for a range of values of $n$ and $\alpha$, comment on its limitations, and give an appropriate graphical illustration.
-#+ Question1e
+#+ Question1e, eval = FALSE
 source("Question1/1e.R")
 #'
 #'\newpage
@@ -123,7 +125,7 @@ source("Question1/1e.R")
 #+ Q2Setup, include = FALSE
 rm(list = ls())
 source("Question2/2setup.R")
-opts_chunk$set(warning = FALSE, echo = TRUE)
+opts_chunk$set(warning = FALSE, echo = TRUE, eval = FALSE)
 opts_chunk$set(fig.width = 5, fig.height = 3, fig.align = "center")
 #'
 #' ## Question 2: Inference for the Cauchy parameter:

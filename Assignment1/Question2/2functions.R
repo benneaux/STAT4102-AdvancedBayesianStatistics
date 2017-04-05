@@ -1,10 +1,16 @@
 library(tidyverse)
 
-CauchyPercentage <- function(x, # a vector of samples
-                             p, # a vector of possible parameters
-                             y = NULL # a value to test Pr[p < y]
+CauchyPercentage <- function(y = NULL,# a value to test Pr[p < y]
+                             alpha = 0.025,
+                             x, # a vector of samples
+                             p # a vector of possible parameters
 ) {
-  cauchydens <- function(x,p){
+  
+  dens <- function(p) {
+    vapply(p,cauchydist,min(p), x = x)
+  }
+  
+  cauchydens <- function(x,p,climlow = -Inf,climhigh = Inf){
     
     cauchydist <- function(x,p) {
       H = vector(mode = "numeric",length = length(x))
@@ -13,8 +19,8 @@ CauchyPercentage <- function(x, # a vector of samples
       }
       return(prod(H))
     }
-    dens = function(p) vapply(p,cauchydist,min(p), x = x)
-    c = (integrate(dens, -Inf, Inf)$value)^(-1)
+
+    c = (integrate(dens, climlow, climhigh)$value)^(-1)
     data.frame(vparams = p, postdens = c*dens(p))
   }
   
@@ -28,9 +34,11 @@ CauchyPercentage <- function(x, # a vector of samples
   abline(v = df$vparams[yind])
   abline(h = df[yind,"postdens"])
   
-  cumdist = c*integrate(dens,-Inf,y)$value
-  
-  return((c(yind,df[yind,"postdens"],cumdist)))
+  cumdist = c*integrate(dens,climlow,y)$value
+  difference = abs(alpha - cumdist)
+  results = c(yind,df[yind,"postdens"],cumdist)
+  invisible(results)
+  return(difference)
 }
 
 CauchyHPD <- function(x, # vector of samples 
@@ -87,3 +95,59 @@ CauchyHPD <- function(x, # vector of samples
   abline(v = r["lower"], col = 'blue')
   return(r)
 }
+
+
+
+
+HPD <- function(h, # height
+                mode, # how to split the uniroot interval 
+                dfunc, 
+                pfunc,
+                alpha = 0.95,
+                plot = TRUE){
+  
+  lt       = uniroot(f=function(x){ dfunc(x) - h}, 
+                     lower = 0, 
+                     upper = mode)$root
+  ut       = uniroot(f=function(x){ dfunc(x) - h}, 
+                     lower = mode,
+                     upper = 1)$root
+  
+  coverage = pfunc(ut) - pfunc(lt)
+  
+  hpdval   = abs(alpha - coverage)
+  
+  if (plot) {
+    th     = seq(0, 1, length=10000)
+    plot(th, dfunc(th),
+         t = "l", 
+         lty = 1,
+         xlab = expression(theta),
+         ylab = "posterior Density")
+    
+    abline(h = h)
+    segments(ut, 0, ut, dfunc(ut))
+    segments(lt, 0, lt, dfunc(lt))
+    title(
+      bquote(
+        paste("p(",.(round(lt, 5))," < ", theta, " < ",
+              .(round(ut,5)), " | " , y, ") = ",
+              .(round(coverage, 5)), ")")))
+  }
+  results <<- data.frame(lt,ut,coverage,h)
+  return(hpdval)}
+
+y=1; n=100; a=1; b=17; p=0.95
+upper <- max(dbeta(seq(0, 1, length=10000),y + a,n-y+b))
+interval <- seq(0,upper,by = 0.00001)
+dfunc <- function(x) dbeta(x, y + a, n - y + b)
+pfunc <-function(x) pbeta(x, y + a, n - y + b)
+mode <- (y + a - 1)/(n + a + b - 2)
+
+optimize(HPD,
+         interval = interval,
+         lower = min(interval),
+         tol = .Machine$double.eps,
+         mode = mode,
+         dfunc = dfunc,
+         pfunc = pfunc)

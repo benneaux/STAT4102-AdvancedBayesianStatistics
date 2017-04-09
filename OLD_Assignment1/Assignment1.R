@@ -1,0 +1,244 @@
+#'---
+#'title: "Assignment 1"
+#'date: "`r Sys.Date()`"
+#'output:  pdf_document
+#'---
+
+#+ DocSetup, include = FALSE
+require(knitr)
+opts_chunk$set(echo = FALSE, warning = FALSE)
+opts_chunk$set(fig.width = 8, fig.height = 6, fig.align = "center")
+#'
+
+################################################################################
+#
+# Question 1
+#
+################################################################################
+
+#+ Q1Setup, include = FALSE
+source("Question1/1setup.R")
+#'
+#' ## Question 1: Inference for the binomial parameter:
+
+#' (a) Develop an R function to calculate HPD intervals for data $(x,n)$, given a \emph{beta(a,b)} prior.
+#+ Question1a, eval = FALSE
+solve.HPD.beta = function(h, y, n, a, b, p){
+  apost <<- y + a
+  bpost <<- n - y + b
+  post_mode = (y + a - 1)/(n + a + b - 2)
+  lt = uniroot(f=function(x){ dbeta(x,apost, bpost) - h},
+               lower=0, upper=mode)$root
+  ut = uniroot(f=function(x){ dbeta(x,apost, bpost) - h},
+               lower=mode, upper=1)$root
+  coverage = pbeta(ut, apost, bpost) - pbeta(lt, apost, bpost)
+  hpdval = abs(p-coverage)
+  results <<- data.frame(lt,ut,coverage,h)
+  return(hpdval)}
+
+  # if (plot) {
+  #   th = seq(0, 1, length=5000)
+  #   plot(th, dbeta(th, apost, bpost),
+  #        t="l", lty=1,xlab=expression(theta),
+  #        ylab="posterior Density", ...)
+  #   abline(h=h)
+  #   segments(ut,0,ut,dbeta(ut,apost,bpost))
+  #   segments(lt,0,lt,dbeta(lt,apost,bpost))
+  #   title(bquote(paste("p(", .(round(lt, 5))," < ", theta, " < ",
+  #                      .(round(ut,5)), " | " , y, ") = ",
+  #                      .(round(coverage, 5)), ")")))
+
+
+y=23; n=80; a=2; b=17; p=0.95
+upper <- max(dbeta(seq(0, 1, length=500),y + a,n-y+b))
+interval <- seq(0,upper,by = 0.00001)
+
+h <- optimize(solve.HPD.beta,
+         interval = interval,
+         lower = min(interval),
+         tol = .Machine$double.eps,
+         y=y,
+         n=n,
+         a=a,
+         b=b,
+         p=p)$minimum
+
+  th = seq(0, 1, length=5000)
+  plot(th, dbeta(th, apost, bpost),
+       t="l", lty=1,xlab=expression(theta),
+       ylab="posterior Density")
+  abline(h=h)
+  segments(ut,0,ut,dbeta(ut,apost,bpost))
+  segments(lt,0,lt,dbeta(lt,apost,bpost))
+  title(bquote(paste("p(", .(round(lt, 5))," < ", theta, " < ",
+                     .(round(ut,5)), " | " , y, ") = ",
+                     .(round(coverage, 5)), ")")))
+#'
+#' Running the above code gives the following output
+#+ Q1aplot, eval = FALSE
+source("Question1/1a.R")
+#'
+#' (b) Reproduce Agresti \& Coull's (1998) Figure 4 $(n = 10)$, and replicate for the Score and Bayes-Laplace \& Jeffreys HPD intervals
+#+ Question1bData, echo = FALSE, cache = FALSE
+n <- 10
+a <- 0.05
+p <- seq(0.0001,0.9999,1/1000)
+z <- abs(qnorm(.5*a,0,1))
+source("Question1/1bData.R")
+#'
+#+ Question1bChart, echo = FALSE
+source("Question1/1bChart.R")
+q1bchart
+#'
+#' (c) Repeat (b) for $n = 50$.
+#+ Question1cData, echo = FALSE, cache = FALSE
+n <- 50
+a <- 0.05
+p <- seq(0.0001,0.9999,1/1000)
+z <- abs(qnorm(.5*a,0,1))
+source("Question1/1cData.R")
+#'
+#+ Question1cChart, echo = FALSE
+source("Question1/1cChart.R")
+q1cchart
+#'
+#' (d) Compare the minimum coverage of the six graphs at (c)
+#+ Question1d
+source("Question1/1d.R")
+kable(Q1dCoverage10)
+kable(Q1dCoverage30)
+#'
+#' (e) The adjusted Wald interval appears to perform well with respect to frequentist coverage, if close to nominal combined with reasonable minimum coverage is aimed for.
+#' From a Bayesian point of view, performance of individual intervals is just as, if not more, important. 
+#' Given $x = 0$, compare the adjusted Wald interval with the exact \& Score intervals (all two-sided), and with the Bayes-Laplace \& Jeffreys HPD intervals, for a range of values of $n$ and $\alpha$, comment on its limitations, and give an appropriate graphical illustration.
+#+ Question1e, eval = FALSE
+source("Question1/1e.R")
+#'
+#'\newpage
+#'
+################################################################################
+#
+# Question 2
+#
+################################################################################
+
+#+ Q2Setup, include = FALSE
+rm(list = ls())
+source("Question2/2setup.R")
+opts_chunk$set(warning = FALSE, echo = TRUE, eval = FALSE)
+opts_chunk$set(fig.width = 5, fig.height = 3, fig.align = "center")
+#'
+#' ## Question 2: Inference for the Cauchy parameter:
+#' 
+#' (a) Develop an R function to find percentiles of a (general) Cauchy posterior as discussed by Jaynes (1976, Example 6) and Box \& Tiao (1973, p.64), to be used for the examples below.
+#+ Question2a, eval = FALSE
+source("Question2/2a.R")
+CauchyPercentage <- function(x, # a vector of samples
+                             p, # a vector of possible parameters
+                             y = NULL # a value to test Pr[p < y]
+) {
+  cauchydens <- function(x,p){
+    
+    cauchydist <- function(x,p) {
+      H = vector(mode = "numeric",length = length(x))
+      for(i in 1:length(x)){
+        H[i] = (1+(x[i] - p)^2)^(-1)
+      }
+      return(prod(H))
+    }
+    dens = vapply(p,cauchydist,min(p), x = x)
+    c = (integrate(dens, -Inf, Inf)$value)^(-1)
+    data.frame(vparams = p, postdens = c*dens(p))
+  }
+  
+  df = cauchydens(x,p)
+  
+  yind = ifelse(length(which(df$vparams == y))==1,
+                which(df$vparams == y),
+                max(which(df$vparams < y)))
+  
+  plot(df$vparams, df$postdens, type = 'l')
+  abline(v = df$vparams[yind])
+  abline(h = df[yind,"postdens"])
+  
+  cumdist = c*integrate(dens,-Inf,y)$value
+  
+  return((c(yind,df[yind,"postdens"],cumdist)))
+}
+
+CauchyHPD <- function(x, # vector of samples 
+                      p, # vector of possible parameter values
+                      alpha = 0.95, # HPD interval value
+                      tol = 0.0001) { # level of tolerance for exact HPD interval
+  
+  cauchydens <- function(x,p){
+    
+    cauchydist <- function(x,p) {
+      H = vector(mode = "numeric",length = length(x))
+      for(i in 1:length(x)){
+        H[i] = (1+(x[i] - p)^2)^(-1)
+      }
+      return(prod(H))
+    }
+    dens = function(p) vapply(p,cauchydist,min(p), x = x)
+    c = (integrate(dens, -Inf, Inf)$value)^(-1)
+    data.frame(vparams = p, postdens = c*dens(p))
+  }
+  
+  df = cauchydens(x,p)
+  
+  cumdist = cumsum(df$postdens)*diff(df$vparams)[1]
+  post_median = which.min(abs(cumdist-0.5))
+  
+  HPDlimits <- function(post_dens) { ## find lower and upper values for which
+    ## prob dens is closest to target value
+    lower = which.min(abs(df$postdens[1:post_median]-post_dens))
+    upper = which.min(abs(df$postdens[(post_median+1):length(df$postdens)]-post_dens))+post_median
+    limits = c(lower,upper)
+  }
+  
+  HPDlimitarea <- function(post_dens) {
+    limitints = HPDlimits(post_dens)
+    limitarea = sum(df$postdens[limitints[1]:limitints[2]])*diff(df$vparams)[1]
+  }
+  ## find credible interval
+  v2 = seq(0,max(df$postdens),by=tol)
+  vals = sapply(v2,HPDlimitarea)
+  w = which.min(abs(vals-alpha))
+  r = c(df$vparams[HPDlimits(v2[w])])
+  names(r) = c("lower","upper")
+  par(mfrow = c(1,2))
+  plot(df$vparams, cumdist, type = 'l')
+  abline(h = 0.5)
+  abline(v = df$vparams[post_median], col = 'red')
+  abline(v = r["upper"], col = 'blue')
+  abline(v = r["lower"], col = 'blue')
+  plot(df$vparams, df$postdens, type = 'l')
+  abline(v = df$vparams[post_median], col = 'red')
+  abline(h = df[HPDlimits(v2[w])[1],"postdens"])
+  abline(v = r["upper"], col = 'blue')
+  abline(v = r["lower"], col = 'blue')
+  return(r)
+}
+#'
+#' (b) Consider Jaynes' example of $n = 2$ observations $(3, 5)$: plot the posterior and calculate the 90\% central credible interval.
+#' Explain why it is quite different from the confidence interval derived by Jaynes (p.202).
+#+ Question2b
+source("Question2/2b.R")
+#'
+#' (c) Consider Box \& Tiao's example of $n = 5$ observations $(11.4, 7.3, 9.8, 13.7, 10.6)$: plot the posterior and calculate 95\% central and HPD credible intervals and check $Pr[\theta < 11.5]$ given by Box \& Tiao.
+#+ Question2c
+source("Question2/2c.R")
+
+#'
+#' (d) Consider Berger's (1985, p.141) example of $n = 5$ observations $(4.0, 5.5, 7.5, 4.5, 3.0)$: calculate 95\% central and HPD credible intervals, with and without Berger's restriction $(\theta > 0)$.
+#+ Question2d
+source("Question2/2d.R")
+
+#'
+#' (e) Clearly, Berger's restriction $(\theta > 0)$ will sometimes lead to a posterior quite different from the unrestricted posterior.
+#' Plot this restricted posterior for the hypothetical negative version of Berger's example: i.e. $(-4.0, -5.5, -7.5, -4.5, -3.0)$, and calculate the 95\% HPD interval.
+#+ Question2e
+source("Question2/2e.R")
+
+#'

@@ -1,4 +1,5 @@
 # Agresti \& Coull 2
+#source("Assignment1/Question1/1functions.R")
 
 q1cchart <- ggplot(data = Q1cdata, aes(x = p, y = dens)) +
   geom_hline(yintercept = 1-a, linetype = 5, colour = "red") +

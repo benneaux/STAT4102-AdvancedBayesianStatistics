@@ -10,103 +10,250 @@ opts_chunk$set(echo = FALSE, warning = FALSE)
 opts_chunk$set(fig.width = 8, fig.height = 6, fig.align = "center")
 #'
 
-################################################################################
-#
-# Question 1
-#
-################################################################################
-
 #+ Q1Setup, include = FALSE
 source("Question1/1setup.R")
 #'
+
 #' ## Question 1: Inference for the binomial parameter:
 
 #' (a) Develop an R function to calculate HPD intervals for data $(x,n)$, given a \emph{beta(a,b)} prior.
-#+ Question1a, eval = FALSE
-solve.HPD.beta = function(h, y, n, a, b, p){
-  apost <<- y + a
-  bpost <<- n - y + b
-  post_mode = (y + a - 1)/(n + a + b - 2)
-  lt = uniroot(f=function(x){ dbeta(x,apost, bpost) - h},
-               lower=0, upper=mode)$root
-  ut = uniroot(f=function(x){ dbeta(x,apost, bpost) - h},
-               lower=mode, upper=1)$root
-  coverage = pbeta(ut, apost, bpost) - pbeta(lt, apost, bpost)
-  hpdval = abs(p-coverage)
-  results <<- data.frame(lt,ut,coverage,h)
-  return(hpdval)}
 
-  # if (plot) {
-  #   th = seq(0, 1, length=5000)
-  #   plot(th, dbeta(th, apost, bpost),
-  #        t="l", lty=1,xlab=expression(theta),
-  #        ylab="posterior Density", ...)
-  #   abline(h=h)
-  #   segments(ut,0,ut,dbeta(ut,apost,bpost))
-  #   segments(lt,0,lt,dbeta(lt,apost,bpost))
-  #   title(bquote(paste("p(", .(round(lt, 5))," < ", theta, " < ",
-  #                      .(round(ut,5)), " | " , y, ") = ",
-  #                      .(round(coverage, 5)), ")")))
+#' I actually developed two functions. My initial attempts were based around the idea that you could optimise for some height 'h'. However, when it came to actually implementing this method in future questions I ran into trouble. So, I instead opted to try and optimise the length of the interval between the upper and lower limits, which produced results that are useable in parts (b)-(e). Here is my first attempt.
 
+#+ Question1a1, echo = TRUE
 
-y=23; n=80; a=2; b=17; p=0.95
-upper <- max(dbeta(seq(0, 1, length=500),y + a,n-y+b))
-interval <- seq(0,upper,by = 0.00001)
+solve.HPD.beta = function(shape1, shape2, credint = 0.95, plot=FALSE, ...){
+  
+  hpdfunc <- function(h, shape1, shape2){
+    mode = (shape1 - 1)/(shape1 + shape2 - 2)
+    lt = uniroot(f=function(x){ dbeta(x,shape1, shape2) - h},
+                 lower=0, upper=mode)$root
+    ut = uniroot(f=function(x){ dbeta(x,shape1, shape2) - h},
+                 lower=mode, upper=1)$root
+    coverage = pbeta(ut, shape1, shape2) - pbeta(lt, shape1, shape2)
+    
+    hpdval = abs(credint-coverage)
+    
+    results <<- data_frame("Lower"    = lt,
+                           "Upper"    = ut,
+                           "Coverage" = coverage,
+                           "Height"   =h)
+    return(hpdval)
+  }
+  upper = max(dbeta(seq(0,1, by = 0.001), shape1, shape2))
+  h = optimize(hpdfunc,
+               interval = seq(0,upper,by = 0.001),
+               lower = 0,
+               tol = .Machine$double.eps,
+               shape1,
+               shape2) 
+  
+  if (plot) {
+    th = seq(0, 1, length=10000)
+    plot(th, dbeta(th, shape1, shape2),
+         t="l",xlab=expression(theta),
+         ylab="Posterior Dens.")
+    abline(h=h)
+    segments(results[[2]],0,results[[2]],dbeta(results[[2]],shape1,shape2))
+    segments(results[[1]],0,results[[1]],dbeta(results[[1]],shape1,shape2))
+    title(bquote(paste("p(", .(round(results[[1]], 5))," < ", theta, " < ",
+                       .(round(results[[2]],5)), " | " , y, ") = ",
+                       .(round(results[[3]], 5)))))
+  }
+  return(results)}
 
-h <- optimize(solve.HPD.beta,
-         interval = interval,
-         lower = min(interval),
-         tol = .Machine$double.eps,
-         y=y,
-         n=n,
-         a=a,
-         b=b,
-         p=p)$minimum
+y=1; n=100; a=1; b=1; p=0.95
+solve.HPD.beta(shape1 = y + a,
+               shape2 = n - y + b,
+               plot = TRUE)
 
-  th = seq(0, 1, length=5000)
-  plot(th, dbeta(th, apost, bpost),
-       t="l", lty=1,xlab=expression(theta),
-       ylab="posterior Density")
-  abline(h=h)
-  segments(ut,0,ut,dbeta(ut,apost,bpost))
-  segments(lt,0,lt,dbeta(lt,apost,bpost))
-  title(bquote(paste("p(", .(round(lt, 5))," < ", theta, " < ",
-                     .(round(ut,5)), " | " , y, ") = ",
-                     .(round(coverage, 5)), ")")))
 #'
-#' Running the above code gives the following output
-#+ Q1aplot, eval = FALSE
-source("Question1/1a.R")
+#' But - as I said - this didn't work well for the method I applied to the rest of the questions. So I came up with this instead.
+#+ Question1a2, echo = TRUE
+
+HDIofqbeta = function(shape1, 
+                      shape2, 
+                      credint = 0.95,
+                      tol = 1e-8,
+                      plot = FALSE,
+                      one.sided = FALSE) {
+  
+  if(one.sided){  # returns the one-sided interval if required.
+    return(qbeta(credint,
+                 shape1,
+                 shape2))
+  } else {
+    
+    # a function to calculate the interval for specific values of the upper and
+    # lower limits
+    
+    interval = function(lowint,  # for 95%: 0 <= lowint <=0.05
+                        credint, # e.g. 95%
+                        shape1,  # i.e: y - a
+                        shape2   # i.e: n - y + b
+                        ){
+      
+      hig = qbeta(credint + lowint, # the upper limit
+                  shape1,
+                  shape2) 
+      
+      low = qbeta(lowint, # the lower limit.
+                  shape1, 
+                  shape2)
+     
+      hig - low # returns the interval.
+    }
+    
+    alpha    = 1 - credint # an upper limit for the interval optimiser.
+    length  = optimize(interval, 
+                       c(0, alpha),
+                       shape1 = shape1,
+                       shape2 = shape2,
+                       credint = 0.95,
+                       tol = 1e-8)
+    
+    HDIinterval = length$minimum # the actual optimised value from 0 to 
+                                 # the lower limit.
+    
+    lt = qbeta(HDIinterval, shape1, shape2)
+    ut = qbeta(HDIinterval + credint, shape1, shape2)
+    coverage = credint
+    l = HDIinterval
+    
+    results <<- data_frame("Lower"    = lt,
+                           "Upper"    = ut,
+                           "Coverage" = coverage,
+                           "Length"   = l)
+    
+    if (plot) {
+      th = seq(0, 1, length=10000)
+      plot(th, dbeta(th, shape1, shape2),
+           t="l",xlab=expression(theta),
+           ylab="Posterior Dens.")
+      abline(h = dbeta(results[[1]],shape1,shape2))
+      segments(results[[2]],0,results[[2]],dbeta(results[[2]],shape1,shape2))
+      segments(results[[1]],0,results[[1]],dbeta(results[[1]],shape1,shape2))
+      title(bquote(paste("p(", .(round(results[[1]], 5))," < ", theta, " < ",
+                         .(round(results[[2]],5)), " | " , y, ") = ",
+                         .(round(results[[3]], 5)))))
+    }
+    
+    return(results)
+  }
+}
+
+y <- 1; n <- 100; a <- 1; b <- 1; p <- 0.95
+HDIofqbeta(shape1 = y + a, shape2 = n - y + b, plot = TRUE)
 #'
+#' Both of these return approximately the same results
+#' 
 #' (b) Reproduce Agresti \& Coull's (1998) Figure 4 $(n = 10)$, and replicate for the Score and Bayes-Laplace \& Jeffreys HPD intervals
-#+ Question1bData, echo = FALSE, cache = FALSE
+#' The code for generating the intervals in questions (b) - (e) is given below.
+#' 
+#+ Question1IntervalCode, eval = FALSE
+waldcover <- function(p,x = 0:n) { # Wald Interval
+  dens   = dbinom(x, n, p) # binomial density values for corresponding params.
+  phat  = x / n # proportion estimate
+  low   = phat - z * sqrt(phat * (1 - phat) / n) # lower limit
+  hig   = phat + z * sqrt(phat * (1 - phat) / n) # upper limit
+  intvals = as.numeric(low <= p & p <= hig) # is the value in the limit?
+  sum(intvals * dens) # return the sum of the successful intervals * binom dens.
+}
+adjwaldcover <- function(p,x = 0:n) { # Adjusted Wald interval
+  dens   = dbinom(x, n, p)
+  nadj  = n + (z^2) # adjusted n for adj. Wald
+  phat  = (1/nadj)*(x + ((z^2)/2))
+  low   = phat - z * sqrt(phat * (1 - phat)/nadj)
+  hig   = phat + z * sqrt(phat * (1 - phat)/nadj)
+  intvals = as.numeric(low <= p & p <= hig)
+  sum(intvals * dens)
+}
+scorecover <- function(p,x = 0:n) { # Wilson "Score" interval.
+  dens   = dbinom(x, n, p)
+  phat  = x/n
+  z2    = z*z # z squared value for use in low and hig functions.
+  low   = (phat + (z2/2)/n 
+           - z * sqrt((phat * (1 - phat) + (z2/4)/n)/n))/(1 + z2/n)
+  hig   = (phat + (z2/2)/n 
+           + z * sqrt((phat * (1 - phat) + (z2/4)/n)/n))/(1 + z2/n)
+  intvals = as.numeric(low <= p & p <= hig)
+  sum(intvals * dens)
+}
+exactcover <- function(p,x = 0:n) { # Cloppper - Pearson "Exact" interval.
+  dens   = dbinom(x, n, p)
+  low   = qbeta(a/2, x, n - x + 1)
+  hig   = qbeta((1-a/2), x + 1, n - x)
+  intvals = as.numeric(low <= p & p <= hig)
+  sum(intvals * dens)
+}
+jeffreyscover <- function(p,x = 0:n,...) { # Jeffrey's HPD interval
+  dens  = dbinom(x,n,p)
+  if(x == 0 & length(x) == 1){ # for one-sided intervals.
+    hig = HDIofqbeta(shape1 = 0.5, shape2 = n + 0.5,...)
+    intvals = as.numeric(p <= hig)
+    sum(intvals * dens)
+  } else { # for two-sided intervals
+    data <-matrix(data = NA, nrow = n+1, ncol = 2)
+    for(i in 0:n){
+      data[i+1,] = HDIofqbeta(shape1 = i + 0.5, shape2 = n - i + 0.5,...)
+    }
+    intvals = as.numeric(data[,1] <= p & p <= data[,2])
+    sum(intvals * dens)
+  }
+}
+blcover <- function(p,x = 0:n,...) { # B-L HPD interval.
+  dens = dbinom(x,n,p)
+  if(x == 0 & length(x) == 1){
+    hig = HDIofqbeta(shape1 = 1, shape2 = n + 1,...)
+    intvals = as.numeric(p <= hig)
+    sum(intvals * dens)
+  } else {
+    data <-matrix(data = NA, nrow = n+1, ncol = 2)
+    for(i in 0:n){
+      data[i+1,] = HDIofqbeta(shape1 = i + 1, shape2 = n - i + 1,...)
+    }
+    intvals = as.numeric(data[,1] <= p & p <= data[,2])
+    sum(intvals * dens)
+  }
+}
+blcover0 <- function(p,x = 0,...) {
+  dens = dbinom(x,n,p)
+  hig = HDIofqbeta(shape1 = 1, shape2 = n + 1,one.sided = TRUE,...)
+  intvals = as.numeric(p <= hig)
+  sum(intvals * dens)
+}
+#' 
+#+ Question1functions
+source("Question1/1functions.R")
+#' 
+#' 
+#+ Question1bData, echo = TRUE, cache = TRUE
 n <- 10
 a <- 0.05
 p <- seq(0.0001,0.9999,1/1000)
 z <- abs(qnorm(.5*a,0,1))
 source("Question1/1bData.R")
 #'
-#+ Question1bChart, echo = FALSE
+#+ Question1bChart, cache = TRUE
 source("Question1/1bChart.R")
 q1bchart
 #'
 #' (c) Repeat (b) for $n = 50$.
-#+ Question1cData, echo = FALSE, cache = FALSE
+#+ Question1cData, echo = TRUE, cache = TRUE
 n <- 50
 a <- 0.05
 p <- seq(0.0001,0.9999,1/1000)
 z <- abs(qnorm(.5*a,0,1))
 source("Question1/1cData.R")
 #'
-#+ Question1cChart, echo = FALSE
+#+ Question1cChart
 source("Question1/1cChart.R")
 q1cchart
 #'
 #' (d) Compare the minimum coverage of the six graphs at (c)
-#+ Question1d
+#+ Question1d 
 source("Question1/1d.R")
-kable(Q1dCoverage10)
-kable(Q1dCoverage30)
+kable(Q1dCoverage50)
 #'
 #' (e) The adjusted Wald interval appears to perform well with respect to frequentist coverage, if close to nominal combined with reasonable minimum coverage is aimed for.
 #' From a Bayesian point of view, performance of individual intervals is just as, if not more, important. 

@@ -4,8 +4,9 @@
 x <- c(4.0, 5.5, 7.5, 4.5, 3.0)
 p <- seq(0,10,1/100)
 
-r <- CauchyHPD(x=x,p=p,alpha = 0.95,tol = 0.00001)
-
+CauchyHPD(x,p,alpha = 0.95)
+p <- seq(0,10,1/100)
+CauchyHPD(x,p,alpha = 0.95)
 
 interval <- seq(0,5, by = 1/1000)
 

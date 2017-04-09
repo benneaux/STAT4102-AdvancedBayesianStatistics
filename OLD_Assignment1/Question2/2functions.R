@@ -3,23 +3,23 @@ library(tidyverse)
 CauchyPercentage <- function(y = NULL,# a value to test Pr[p < y]
                              alpha = 0.025,
                              x, # a vector of samples
-                             p, # a vector of possible parameters
-                             climlow = -Inf,
-                             climhigh = Inf,
-                             plot = FALSE
+                             p # a vector of possible parameters
 ) {
   
-  cauchydist <- function(x,p) {
-    H = vector(mode = "numeric",length = length(x))
-    for(i in 1:length(x)){
-      H[i] = (1+(x[i] - p)^2)^(-1)
-    }
-    return(prod(H))
-  }
   dens <- function(p) {
     vapply(p,cauchydist,min(p), x = x)
   }
-  cauchydens <- function(x,p, ...){
+  
+  cauchydens <- function(x,p,climlow = -Inf,climhigh = Inf){
+    
+    cauchydist <- function(x,p) {
+      H = vector(mode = "numeric",length = length(x))
+      for(i in 1:length(x)){
+        H[i] = (1+(x[i] - p)^2)^(-1)
+      }
+      return(prod(H))
+    }
+
     c = (integrate(dens, climlow, climhigh)$value)^(-1)
     data.frame(vparams = p, postdens = c*dens(p))
   }
@@ -29,15 +29,15 @@ CauchyPercentage <- function(y = NULL,# a value to test Pr[p < y]
   yind = ifelse(length(which(df$vparams == y))==1,
                 which(df$vparams == y),
                 max(which(df$vparams < y)))
-  if(plot){
-    plot(df$vparams, df$postdens, type = 'l')
-    abline(v = df$vparams[yind])
-    abline(h = df[yind,"postdens"])
-  }
-  c = (integrate(dens, climlow, climhigh)$value)^(-1)
+  
+  plot(df$vparams, df$postdens, type = 'l')
+  abline(v = df$vparams[yind])
+  abline(h = df[yind,"postdens"])
+  
   cumdist = c*integrate(dens,climlow,y)$value
   difference = abs(alpha - cumdist)
-  results <<- c(yind,df[yind,"postdens"],cumdist)
+  results = c(yind,df[yind,"postdens"],cumdist)
+  invisible(results)
   return(difference)
 }
 
@@ -82,17 +82,17 @@ CauchyHPD <- function(x, # vector of samples
   w = which.min(abs(vals-alpha))
   r = c(df$vparams[HPDlimits(v2[w])])
   names(r) = c("lower","upper")
-  par(mfrow = c(1,2))
-  plot(df$vparams, cumdist, type = 'l')
-  abline(h = 0.5)
-  abline(v = df$vparams[post_median], col = 'red')
-  abline(v = r["upper"], col = 'blue')
-  abline(v = r["lower"], col = 'blue')
-  plot(df$vparams, df$postdens, type = 'l')
-  abline(v = df$vparams[post_median], col = 'red')
-  abline(h = df[HPDlimits(v2[w])[1],"postdens"])
-  abline(v = r["upper"], col = 'blue')
-  abline(v = r["lower"], col = 'blue')
+  # par(mfrow = c(1,2))
+  # plot(df$vparams, cumdist, type = 'l')
+  # abline(h = 0.5)
+  # abline(v = df$vparams[post_median], col = 'red')
+  # abline(v = r["upper"], col = 'blue')
+  # abline(v = r["lower"], col = 'blue')
+  # plot(df$vparams, df$postdens, type = 'l')
+  # abline(v = df$vparams[post_median], col = 'red')
+  # abline(h = df[HPDlimits(v2[w])[1],"postdens"])
+  # abline(v = r["upper"], col = 'blue')
+  # abline(v = r["lower"], col = 'blue')
   return(r)
 }
 
@@ -137,4 +137,17 @@ HPD <- function(h, # height
   results <<- data.frame(lt,ut,coverage,h)
   return(hpdval)}
 
+y=1; n=100; a=1; b=17; p=0.95
+upper <- max(dbeta(seq(0, 1, length=10000),y + a,n-y+b))
+interval <- seq(0,upper,by = 0.00001)
+dfunc <- function(x) dbeta(x, y + a, n - y + b)
+pfunc <-function(x) pbeta(x, y + a, n - y + b)
+mode <- (y + a - 1)/(n + a + b - 2)
 
+optimize(HPD,
+         interval = interval,
+         lower = min(interval),
+         tol = .Machine$double.eps,
+         mode = mode,
+         dfunc = dfunc,
+         pfunc = pfunc)

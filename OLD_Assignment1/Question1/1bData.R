@@ -1,7 +1,8 @@
-# Agresti \& Coull 2
+# # Agresti \& Coull
+#source("Assignment1/Question1/1functions.R")
 # Coverage Intervals
 
-Q1cdata <- tbl_df(p) %>%
+Q1bdata <- tbl_df(p) %>%
   rename(p = value) %>%
   mutate(Wald = vapply(p,waldcover,0)) %>%
   mutate("Adjusted-Wald" = vapply(p,adjwaldcover, 0)) %>%
@@ -10,7 +11,3 @@ Q1cdata <- tbl_df(p) %>%
   mutate("Bayes-Laplace" = vapply(p, blcover,0)) %>%
   mutate(Jeffreys = vapply(p,jeffreyscover,0)) %>%
   gather(key = covinterval, value = dens, -p)
-
-Q1cCoverage <- Q1cdata %>%
-  group_by(covinterval) %>%
-  summarize(mean(dens), median(dens), min(dens))

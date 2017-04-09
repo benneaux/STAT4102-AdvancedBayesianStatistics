@@ -1,5 +1,5 @@
 # # Agresti \& Coull
-#source("Assignment1/Question1/1functions.R")
+
 # Coverage Intervals
 
 Q1bdata <- tbl_df(p) %>%
@@ -11,3 +11,5 @@ Q1bdata <- tbl_df(p) %>%
   mutate("Bayes-Laplace" = vapply(p, blcover,0)) %>%
   mutate(Jeffreys = vapply(p,jeffreyscover,0)) %>%
   gather(key = covinterval, value = dens, -p)
+
+

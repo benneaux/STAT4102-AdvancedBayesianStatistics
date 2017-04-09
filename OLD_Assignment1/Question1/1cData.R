@@ -1,4 +1,5 @@
 # Agresti \& Coull 2
+#source("Assignment1/Question1/1functions.R")
 # Coverage Intervals
 
 Q1cdata <- tbl_df(p) %>%

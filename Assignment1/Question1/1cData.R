@@ -11,6 +11,6 @@ Q1cdata <- tbl_df(p) %>%
   mutate(Jeffreys = vapply(p,jeffreyscover,0)) %>%
   gather(key = covinterval, value = dens, -p)
 
-Q1cCoverage <- Q1cdata %>%
-  group_by(covinterval) %>%
-  summarize(mean(dens), median(dens), min(dens))
+# Q1cCoverage <- Q1cdata %>%
+#   group_by(covinterval) %>%
+#   summarize(mean(dens), median(dens), min(dens))

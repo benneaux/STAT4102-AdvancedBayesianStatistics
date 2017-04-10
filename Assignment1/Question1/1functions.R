@@ -58,72 +58,72 @@ if(shape1 > n){
 }}
 
 waldcover <- function(p,x = 0:n) {
-  fpx   = dbinom(x, n, p)
+  dens   = dbinom(x, n, p)
   phat  = x / n
   low   = phat - z * sqrt(phat * (1 - phat) / n)
   hig   = phat + z * sqrt(phat * (1 - phat) / n)
-  inies = as.numeric(low <= p & p <= hig)
-  sum(inies * fpx)
+  intvals = as.numeric(low <= p & p <= hig)
+  sum(intvals * dens)
 }
 adjwaldcover <- function(p,x = 0:n) {
-  fpx   = dbinom(x, n, p)
+  dens   = dbinom(x, n, p)
   nadj  = n + (z^2)
   phat  = (1/nadj)*(x + ((z^2)/2))
   low   = phat - z * sqrt(phat * (1 - phat)/nadj)
   hig   = phat + z * sqrt(phat * (1 - phat)/nadj)
-  inies = as.numeric(low <= p & p <= hig)
-  sum(inies * fpx)
+  intvals = as.numeric(low <= p & p <= hig)
+  sum(intvals * dens)
 }
 scorecover <- function(p,x = 0:n) {
-  fpx   = dbinom(x, n, p)
+  dens   = dbinom(x, n, p)
   phat  = x/n
   z2    = z*z
   low   = (phat + (z2/2)/n 
            - z * sqrt((phat * (1 - phat) + (z2/4)/n)/n))/(1 + z2/n)
   hig   = (phat + (z2/2)/n 
            + z * sqrt((phat * (1 - phat) + (z2/4)/n)/n))/(1 + z2/n)
-  inies = as.numeric(low <= p & p <= hig)
-  sum(inies * fpx)
+  intvals = as.numeric(low <= p & p <= hig)
+  sum(intvals * dens)
 }
 exactcover <- function(p,x = 0:n) {
-  fpx   = dbinom(x, n, p)
+  dens   = dbinom(x, n, p)
   low   = qbeta(a/2, x, n - x + 1)
   hig   = qbeta((1-a/2), x + 1, n - x)
-  inies = as.numeric(low <= p & p <= hig)
-  sum(inies * fpx)
+  intvals = as.numeric(low <= p & p <= hig)
+  sum(intvals * dens)
 }
 jeffreyscover <- function(p,x = 0:n,...) {
-  fpx  = dbinom(x,n,p)
+  dens  = dbinom(x,n,p)
     data <-matrix(data = NA, nrow = n+1, ncol = 2)
     for(i in 0:n){
       data[i+1,] = solve.HPD.beta(shape1 = i + 0.5, shape2 = n - i + 0.5,...)
     }
-    inies = as.numeric(data[,1] <= p & p <= data[,2])
-    sum(inies * fpx)
+    intvals = as.numeric(data[,1] <= p & p <= data[,2])
+    sum(intvals * dens)
   }
 
 
 blcover <- function(p,x = 0:n,...) {
-  fpx = dbinom(x,n,p)
+  dens = dbinom(x,n,p)
     data <-matrix(data = NA, nrow = n+1, ncol = 2)
     for(i in 0:n){
       data[i+1,] = solve.HPD.beta(shape1 = i + 1, shape2 = n - i + 1,...)
     }
-    inies = as.numeric(data[,1] <= p & p <= data[,2])
-    sum(inies * fpx)
+    intvals = as.numeric(data[,1] <= p & p <= data[,2])
+    sum(intvals * dens)
   }
 
 blcover0 <- function(p,x = 0,...) {
-  fpx = dbinom(x,n,p)
+  dens = dbinom(x,n,p)
     hig = solve.HPD.beta(shape1 = 1, shape2 = n + 1,...)
-    inies = as.numeric(p <= hig)
-    sum(inies * fpx)
+    intvals = as.numeric(p <= hig)
+    sum(intvals * dens)
 }
 
 jeffreyscover0 <- function(p,x = 0,...) {
-  fpx = dbinom(x,n,p)
+  dens = dbinom(x,n,p)
   hig = solve.HPD.beta(shape1 = 0.5, shape2 = n + 0.5,...)
-  inies = as.numeric(p <= hig)
-  sum(inies * fpx)
+  intvals = as.numeric(p <= hig)
+  sum(intvals * dens)
 }
 

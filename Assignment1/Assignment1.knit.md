@@ -1,27 +1,22 @@
-#'---
-#'title: "Assignment 1"
-#'date: "`r Sys.Date()`"
-#'output:  pdf_document
-#'---
+---
+title: "Assignment 1"
+date: "2017-04-11"
+output:  pdf_document
+---
 
-#+ DocSetup, include = FALSE
-require(knitr)
-opts_chunk$set(echo = FALSE, warning = FALSE)
-opts_chunk$set(fig.width = 8, fig.height = 6, fig.align = "center")
-#'
 
-#+ Q1Setup, include = FALSE
-source("Question1/1setup.R")
-#'
 
-#' ## Question 1: Inference for the binomial parameter:
 
-#' (a) Develop an R function to calculate HPD intervals for data $(x,n)$, given a \emph{beta(a,b)} prior.
 
-#' This function will optimise the height 'h' on the y-axis in the manner that I described in class.
 
-#+ Question1a1, echo = TRUE
 
+
+## Question 1: Inference for the binomial parameter:
+(a) Develop an R function to calculate HPD intervals for data $(x,n)$, given a \emph{beta(a,b)} prior.
+This function will optimise the height 'h' on the y-axis in the manner that I described in class.
+
+
+```r
 solve.HPD.beta = function(shape1, shape2, # shape1 and shape2 from the beta.
                           credint = 0.95, one.sided = FALSE,...){
   
@@ -79,84 +74,31 @@ solve.HPD.beta = function(shape1, shape2, # shape1 and shape2 from the beta.
 # Call to see the results.
 y=1; n=100; a=1; b=1; p=0.95
 solve.HPD.beta(shape1 = y + a, shape2 = n - y + b)
-#'
-#' (b) Reproduce Agresti \& Coull's (1998) Figure 4 $(n = 10)$, and replicate for the Score and Bayes-Laplace \& Jeffreys HPD intervals
-#' The code for generating the intervals in questions (b) - (e) is given below. The values for the sawtooth graphs are obtained by using vapply and a vector of values for the parameter between 0 and 1: e.g for the Wald we use "vapply(p,waldcover,0)".
-#' 
-#+ Question1IntervalCode, eval = FALSE
-waldcover <- function(p,x = 0:n) { # Wald Interval
-  dens   = dbinom(x, n, p) # binomial density values for corresponding params.
-  phat  = x / n # proportion estimate
-  low   = phat - z * sqrt(phat * (1 - phat) / n) # lower limit
-  hig   = phat + z * sqrt(phat * (1 - phat) / n) # upper limit
-  intvals = as.numeric(low <= p & p <= hig) # is the value in the limit?
-  sum(intvals * dens) # return the sum of the successful intervals * binom dens.
-}
-adjwaldcover <- function(p,x = 0:n) { # Adjusted Wald interval
-  dens   = dbinom(x, n, p)
-  nadj  = n + (z^2) # adjusted n for adj. Wald
-  phat  = (1/nadj)*(x + ((z^2)/2))
-  low   = phat - z * sqrt(phat * (1 - phat)/nadj)
-  hig   = phat + z * sqrt(phat * (1 - phat)/nadj)
-  intvals = as.numeric(low <= p & p <= hig)
-  sum(intvals * dens)
-}
-scorecover <- function(p,x = 0:n) { # Wilson "Score" interval.
-  dens   = dbinom(x, n, p)
-  phat  = x/n
-  z2    = z*z # z squared value for use in low and hig functions.
-  low   = (phat + (z2/2)/n 
-           - z * sqrt((phat * (1 - phat) + (z2/4)/n)/n))/(1 + z2/n)
-  hig   = (phat + (z2/2)/n 
-           + z * sqrt((phat * (1 - phat) + (z2/4)/n)/n))/(1 + z2/n)
-  intvals = as.numeric(low <= p & p <= hig)
-  sum(intvals * dens)
-}
-exactcover <- function(p,x = 0:n) { # Cloppper - Pearson "Exact" interval.
-  dens   = dbinom(x, n, p)
-  low   = qbeta(a/2, x, n - x + 1)
-  hig   = qbeta((1-a/2), x + 1, n - x)
-  intvals = as.numeric(low <= p & p <= hig)
-  sum(intvals * dens)
-}
-jeffreyscover <- function(p,x = 0:n,...) { # Jeffrey's HPD interval
-  dens  = dbinom(x,n,p)
- # for two-sided intervals
-    data <-matrix(data = NA, nrow = n+1, ncol = 2)
-    for(i in 0:n){
-      data[i+1,] = solve.HPD.beta(shape1 = i + 0.5, shape2 = n - i + 0.5,...)
-    }
-    intvals = as.numeric(data[,1] <= p & p <= data[,2])
-    sum(intvals * dens)
-}
-blcover <- function(p,x = 0:n,...) { # B-L HPD interval.
-  dens = dbinom(x,n,p)
-    data <-matrix(data = NA, nrow = n+1, ncol = 2)
-    for(i in 0:n){
-      data[i+1,] = solve.HPD.beta(shape1 = i + 1, shape2 = n - i + 1,...)
-    }
-    intvals = as.numeric(data[,1] <= p & p <= data[,2])
-    sum(intvals * dens)
-}
-blcover0 <- function(p,x = 0,...) { # for one-sided intervals
-  dens = dbinom(x,n,p)
-  hig = solve.HPD.beta(shape1 = 1, shape2 = n + 1,...)
-  intvals = as.numeric(p <= hig)
-  sum(intvals * dens)
-}
+```
 
-jeffreyscover0 <- function(p,x = 0,...) { # for one-sided intervals
-  dens = dbinom(x,n,p)
-  hig = solve.HPD.beta(shape1 = 0.5, shape2 = n + 0.5,...)
-  intvals = as.numeric(p <= hig)
-  sum(intvals * dens)
-}
-#' 
-#+ Question1functions
-source("Question1/1functions.R")
-#' 
-#' 
-#+ Question1bData, echo = TRUE, cache = TRUE
+```
+## # A tibble: 1 x 4
+##          Lower      Upper Coverage   Height
+##          <dbl>      <dbl>    <dbl>    <dbl>
+## 1 0.0004144375 0.04630291     0.95 4.286167
+```
+
+
+(b) Reproduce Agresti \& Coull's (1998) Figure 4 $(n = 10)$, and replicate for the Score and Bayes-Laplace \& Jeffreys HPD intervals
+The code for generating the intervals in questions (b) - (e) is given below. The values for the sawtooth graphs are obtained by using vapply and a vector of values for the parameter between 0 and 1: e.g for the Wald we use "vapply(p,waldcover,0)".
+
+
+
+
+
+
+
+
+
+
+
+
+```r
 n <- 10; a <- 0.05; p <- seq(0.0001,0.9999,1/1000); z <- abs(qnorm(.5*a,0,1))
 
 Q1bdata <- tbl_df(p) %>%
@@ -183,9 +125,17 @@ q1bchart <- ggplot(data = Q1bdata, aes(x = p, y = dens)) +
   theme(axis.title.x = element_text(margin = margin(15,0,0,0)))
 
 q1bchart # calls the chart.
-#'
-#' (c) Repeat (b) for $n = 50$.
-#+ Question1cData, echo = TRUE, cache = TRUE
+```
+
+
+
+\begin{center}\includegraphics{Assignment1_files/figure-latex/Question1bData-1} \end{center}
+
+
+(c) Repeat (b) for $n = 50$.
+
+
+```r
 n <- 50; a <- 0.05; p <- seq(0.0001,0.9999,1/1000); z <- abs(qnorm(.5*a,0,1))
 
 Q1cdata <- tbl_df(p) %>%
@@ -212,54 +162,54 @@ q1cchart <- ggplot(data = Q1cdata, aes(x = p, y = dens)) +
   theme(axis.title.x = element_text(margin = margin(15,0,0,0)))
 
 q1cchart
+```
 
-#'
-#' (d) Compare the minimum coverage of the six graphs at (c)
 
-#' Firslty, the minimum coverage of the Wald interval is terrible.
-#'  
-#+ Question1d 
 
-Q1dCoverage50 <- Q1cdata %>%
-  group_by(covinterval) %>%
-  summarize(mean(dens), median(dens), min(dens))
+\begin{center}\includegraphics{Assignment1_files/figure-latex/Question1cData-1} \end{center}
 
-kable(Q1dCoverage50)
-#'
-#' (e) The adjusted Wald interval appears to perform well with respect to frequentist coverage, if close to nominal combined with reasonable minimum coverage is aimed for.
-#' From a Bayesian point of view, performance of individual intervals is just as, if not more, important. 
-#' Given $x = 0$, compare the adjusted Wald interval with the exact \& Score intervals (all two-sided), and with the Bayes-Laplace \& Jeffreys HPD intervals, for a range of values of $n$ and $\alpha$, comment on its limitations, and give an appropriate graphical illustration.
 
-#' Below, I've reproduced the upper limits for each interval - for n between 1 and 100 - for different values of alpha.
-#'
-#+ Question1e, cache = TRUE, echo = FALSE
-source("Question1/1e.R")
-q1echart <- ggplot(data = chartdata, aes(x = n, y = value))
-#'
-#+Question1e2, cache = FALSE, fig.height = 10, fig.width  = 8, dependson = "Question1e"
-q1e2chart <- q1echart +
-  geom_line(aes(group = covinterval, colour = covinterval), size  = 1) +
-  theme_few(base_size = 16) +
-  facet_wrap(~a) +
-  xlim(0,100) +
-  ylim(0,1) +
-  theme(legend.position = "bottom")
-q1e2chart
-#'
+(d) Compare the minimum coverage of the six graphs at (c)
+Firslty, the minimum coverage of the Wald interval is terrible.
+ 
 
-#'\newpage
-#'
 
-#+ Q2Setup, include = FALSE
-rm(list = ls())
-source("Question2/2setup.R")
-opts_chunk$set(warning = FALSE, echo = TRUE, cache = TRUE)
-opts_chunk$set(fig.width = 8, fig.height = 6, fig.align = "center")
-#'
-#' ## Question 2: Inference for the Cauchy parameter:
-#' 
-#' (a) Develop an R function to find percentiles of a (general) Cauchy posterior as discussed by Jaynes (1976, Example 6) and Box \& Tiao (1973, p.64), to be used for the examples below.
-#+ Question2a, eval = FALSE
+covinterval      mean(dens)   median(dens)   min(dens)
+--------------  -----------  -------------  ----------
+Adjusted-Wald     0.9579977      0.9556593   0.9346807
+Bayes-Laplace     0.9500028      0.9468787   0.9141711
+Exact             0.9693205      0.9677614   0.9526640
+Jeffreys          0.9418993      0.9408915   0.8438360
+Score             0.9518805      0.9530135   0.8562090
+Wald              0.9005129      0.9348509   0.0049878
+
+
+(e) The adjusted Wald interval appears to perform well with respect to frequentist coverage, if close to nominal combined with reasonable minimum coverage is aimed for.
+From a Bayesian point of view, performance of individual intervals is just as, if not more, important. 
+Given $x = 0$, compare the adjusted Wald interval with the exact \& Score intervals (all two-sided), and with the Bayes-Laplace \& Jeffreys HPD intervals, for a range of values of $n$ and $\alpha$, comment on its limitations, and give an appropriate graphical illustration.
+Below, I've reproduced the upper limits for each interval - for n between 1 and 100 - for different values of alpha.
+
+
+
+
+
+
+
+\begin{center}\includegraphics{Assignment1_files/figure-latex/Question1e2-1} \end{center}
+
+
+\newpage
+
+
+
+
+
+## Question 2: Inference for the Cauchy parameter:
+
+(a) Develop an R function to find percentiles of a (general) Cauchy posterior as discussed by Jaynes (1976, Example 6) and Box \& Tiao (1973, p.64), to be used for the examples below.
+
+
+```r
 CauchyPercentage <- function(y = NULL,# a value to test Pr[p < y]
                              x, # a vector of samples
                              p, # a vector of possible parameters
@@ -335,11 +285,14 @@ CauchyHPD <- function(x, # vector of samples
   
   return(r)
 }
+```
 
-#'
-#' (b) Consider Jaynes' example of $n = 2$ observations $(3, 5)$: plot the posterior and calculate the 90\% central credible interval.
-#' Explain why it is quite different from the confidence interval derived by Jaynes (p.202).
-#+ Question2b
+
+(b) Consider Jaynes' example of $n = 2$ observations $(3, 5)$: plot the posterior and calculate the 90\% central credible interval.
+Explain why it is quite different from the confidence interval derived by Jaynes (p.202).
+
+
+```r
 x <- c(3,5); p <- seq(0,8,1/100)
 interval <- seq(0,3, by = 1/1000)
 h <- vector("numeric",2L)
@@ -363,13 +316,27 @@ h[2] <- optimize(CauchyPercentage,
 r <- CauchyHPD(x = x, p = p, alpha = 0.9, tol = 0.0001)
 abline(v = h[1], col = "red", lty = 2)
 abline(v = h[2], col = "red", lty = 2)
+```
+
+
+
+\begin{center}\includegraphics{Assignment1_files/figure-latex/Question2b-1} \end{center}
+
+```r
 c(r, h)
-#'
-#' (c) Consider Box \& Tiao's example of $n = 5$ observations $(11.4, 7.3, 9.8, 13.7, 10.6)$: plot the posterior and calculate 95\% central and HPD credible intervals and check $Pr[\theta < 11.5]$ given by Box \& Tiao.
+```
 
-#' Here's the code and the graph.
+```
+##           lower           upper Lower (Central) Upper (Central) 
+##        2.030000        5.970000        2.028646        5.971354
+```
 
-#+ Question2c
+
+(c) Consider Box \& Tiao's example of $n = 5$ observations $(11.4, 7.3, 9.8, 13.7, 10.6)$: plot the posterior and calculate 95\% central and HPD credible intervals and check $Pr[\theta < 11.5]$ given by Box \& Tiao.
+Here's the code and the graph.
+
+
+```r
 x <- c(11.4, 7.3, 9.8, 13.7, 10.6); p <- seq(5,15,by = 1/100)
 h <- vector("numeric",2L); names(h) <- c("Lower (Central)", "Upper (Central)")
 interval <- seq(5,10, by = 1/1000)
@@ -393,15 +360,35 @@ h[2] <- optimize(CauchyPercentage, # Upper Central limit
 r <- CauchyHPD(x=x,p=p,alpha = 0.95,tol = 0.00001)
 abline(v = h[1], col = "red", lty = 2) # Lower Central limit
 abline(v = h[2], col = "red", lty = 2) # Upper Central limit
+```
 
+
+
+\begin{center}\includegraphics{Assignment1_files/figure-latex/Question2c-1} \end{center}
+
+```r
 c(r, h)
+```
+
+```
+##     Lower (HPD)     Upper (HPD) Lower (Central) Upper (Central) 
+##        8.940000       12.320000        8.928723       12.322678
+```
+
+```r
 CauchyPercentageNO(11.5, x=x, p=p)
-#'
-#' (d) Consider Berger's (1985, p.141) example of $n = 5$ observations $(4.0, 5.5, 7.5, 4.5, 3.0)$: calculate 95\% central and HPD credible intervals, with and without Berger's restriction $(\theta > 0)$.
+```
 
-#' Firstly, without the restriction.
+```
+## [1] 0.8772614
+```
 
-#+ Question2d
+
+(d) Consider Berger's (1985, p.141) example of $n = 5$ observations $(4.0, 5.5, 7.5, 4.5, 3.0)$: calculate 95\% central and HPD credible intervals, with and without Berger's restriction $(\theta > 0)$.
+Firstly, without the restriction.
+
+
+```r
 x <- c(4.0, 5.5, 7.5, 4.5, 3.0); p <- seq(2,8,1/100)
 h <- vector("numeric",2L); names(h) <- c("Lower (Central)", "Upper (Central)")
 interval <- seq(2,5, by = 1/1000)
@@ -424,10 +411,26 @@ h[2] <- optimize(CauchyPercentage, # Upper Central limit
 r <- CauchyHPD(x=x,p=p,alpha = 0.95,tol = 0.00001)
 abline(v = h[1], col = "red", lty = 2) # Lower Central limit
 abline(v = h[2], col = "red", lty = 2) # Upper Central limit
+```
+
+
+
+\begin{center}\includegraphics{Assignment1_files/figure-latex/Question2d-1} \end{center}
+
+```r
 c(r, h)
-#'
-#' From this we can see that Berger's restriction won't affect this particular posterior. However, if we plot the negative version for the next question, we will see where this restriction may impact on our analysis.
-#+ Question2d2, cache = TRUE
+```
+
+```
+##     Lower (HPD)     Upper (HPD) Lower (Central) Upper (Central) 
+##        3.100000        6.050000        3.170594        6.149956
+```
+
+
+From this we can see that Berger's restriction won't affect this particular posterior. However, if we plot the negative version for the next question, we will see where this restriction may impact on our analysis.
+
+
+```r
 x <- c(-4.0, -5.5, -7.5, -4.5, -3.0); p <- seq(-8,5,1/100)
 h <- vector("numeric",2L); names(h) <- c("Lower (Central)", "Upper (Central)")
 interval <- seq(-8,-5, by = 1/1000)
@@ -451,16 +454,42 @@ h[2] <- optimize(CauchyPercentage,
 r <- CauchyHPD(x=x,p=p,alpha = 0.95,tol = 0.00001)
 abline(v = h[1], col = "red", lty = 2) # upper Central limit
 abline(v = h[2], col = "red", lty = 2) # lower Central limit
+```
+
+
+
+\begin{center}\includegraphics{Assignment1_files/figure-latex/Question2d2-1} \end{center}
+
+```r
 c(r, h)
-#'
-#' (e) Clearly, Berger's restriction $(\theta > 0)$ will sometimes lead to a posterior quite different from the unrestricted posterior.
-#' Plot this restricted posterior for the hypothetical negative version of Berger's example: i.e. $(-4.0, -5.5, -7.5, -4.5, -3.0)$, and calculate the 95\% HPD interval.
+```
 
-#+ Question2eSetup, include = FALSE
-source("Question2/2e.R")
-#'
+```
+##     Lower (HPD)     Upper (HPD) Lower (Central) Upper (Central) 
+##       -6.050000       -3.100000       -6.149995       -3.170589
+```
 
-#+ Question2e
+
+(e) Clearly, Berger's restriction $(\theta > 0)$ will sometimes lead to a posterior quite different from the unrestricted posterior.
+Plot this restricted posterior for the hypothetical negative version of Berger's example: i.e. $(-4.0, -5.5, -7.5, -4.5, -3.0)$, and calculate the 95\% HPD interval.
+
+
+
+
+
+
+```r
 x <- c(-4.0, -5.5, -7.5, -4.5, -3.0); p <- seq(0,5,1/1000)
 CauchyHPD(x=x,p=p, climlow = 0, climhigh = Inf)
-#'
+```
+
+
+
+\begin{center}\includegraphics{Assignment1_files/figure-latex/Question2e-1} \end{center}
+
+```
+##     lower     upper      dens 
+## 0.0000000 1.8630000 0.9490335
+```
+
+

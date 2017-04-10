@@ -19,12 +19,14 @@ source("Question1/1setup.R")
 
 ## Question 1: Inference for the binomial parameter:
 (a) Develop an R function to calculate HPD intervals for data $(x,n)$, given a \emph{beta(a,b)} prior.
-I actually developed two functions. My initial attempts were based around the idea that you could optimise for some height 'h'. However, when it came to actually implementing this method in future questions I ran into trouble. So, I instead opted to try and optimise the length of the interval between the upper and lower limits, which produced results that are useable in parts (b)-(e). Here is my first attempt.
+This function will optimise the height 'h' on the y-axis in the manner that I described in class.
 
 ```{r Question1a1, echo = TRUE}
 
-solve.HPD.beta = function(shape1, shape2, credint = 0.95, one.sided = FALSE,...){
-  if(shape1 <= 1 | one.sided == TRUE){
+solve.HPD.beta = function(shape1, shape2, # shape1 and shape2 from the beta.
+                          credint = 0.95, one.sided = FALSE,...){
+  
+  if(shape1 <= 1 | one.sided == TRUE){ # for x = 0 and one-sided intervals.
     lt = 0
     ut = qbeta(credint, shape1, shape2)
     coverage = credint
@@ -34,7 +36,7 @@ solve.HPD.beta = function(shape1, shape2, credint = 0.95, one.sided = FALSE,...)
                          "Height"   = ut)
     return(results)
   }
-  if(shape1 > n){
+  if(shape1 > n){ # for x = n
     lt = qbeta(1-credint, shape1, shape2)
     ut = 1
     coverage = credint
@@ -43,7 +45,7 @@ solve.HPD.beta = function(shape1, shape2, credint = 0.95, one.sided = FALSE,...)
                          "Coverage" = coverage,
                          "Height"   = lt)
     return(results)
-  } else {
+  } else { # otherwise
     hpdfunc <- function(h, shape1, shape2){
       mode = (shape1 - 1)/(shape1 + shape2 - 2)
       lt = uniroot(f=function(x){ dbeta(x,shape1, shape2) - h},
@@ -51,20 +53,16 @@ solve.HPD.beta = function(shape1, shape2, credint = 0.95, one.sided = FALSE,...)
       ut = uniroot(f=function(x){ dbeta(x,shape1, shape2) - h},
                    lower=mode, upper=1)$root
       coverage = pbeta(ut, shape1, shape2) - pbeta(lt, shape1, shape2)
-      
-      hpdval = abs(credint-coverage)
-      
-      return(hpdval)
+      abs(credint-coverage)
     }
     upper = max(dbeta(seq(0,1, by = 0.001), shape1, shape2)) 
-    
     h = optimize(hpdfunc,
                  interval = seq(0,upper,by = 0.001),
                  lower = 0,
                  tol = .Machine$double.eps,
                  shape1,
                  shape2)
-    
+    # This will return the actual values after the optimiser is done.
     h <- h$minimum
     mode = (shape1 - 1)/(shape1 + shape2 - 2)
     lt = uniroot(f=function(x){ dbeta(x,shape1, shape2) - h},
@@ -79,6 +77,7 @@ solve.HPD.beta = function(shape1, shape2, credint = 0.95, one.sided = FALSE,...)
     return(results)
   }}
 
+# Call to see the results.
 y=1; n=100; a=1; b=1; p=0.95
 solve.HPD.beta(shape1 = y + a, shape2 = n - y + b)
 ```
@@ -144,17 +143,17 @@ blcover <- function(p,x = 0:n,...) { # B-L HPD interval.
     sum(intvals * dens)
 }
 blcover0 <- function(p,x = 0,...) { # for one-sided intervals
-  fpx = dbinom(x,n,p)
+  dens = dbinom(x,n,p)
   hig = solve.HPD.beta(shape1 = 1, shape2 = n + 1,...)
-  inies = as.numeric(p <= hig)
-  sum(inies * fpx)
+  intvals = as.numeric(p <= hig)
+  sum(intvals * dens)
 }
 
 jeffreyscover0 <- function(p,x = 0,...) { # for one-sided intervals
-  fpx = dbinom(x,n,p)
+  dens = dbinom(x,n,p)
   hig = solve.HPD.beta(shape1 = 0.5, shape2 = n + 0.5,...)
-  inies = as.numeric(p <= hig)
-  sum(inies * fpx)
+  intvals = as.numeric(p <= hig)
+  sum(intvals * dens)
 }
 ```
 
@@ -168,12 +167,31 @@ source("Question1/1functions.R")
 
 
 ```{r Question1bData, echo = TRUE, cache = TRUE}
-n <- 10 # successes
-a <- 0.05 # desired alpha
-p <- seq(0.001,0.999,1/100) # vector of possible param. values.
-z <- abs(qnorm(.5*a,0,1)) # z-score to use for some of the intervals.
-source("Question1/1bData.R") # contains the code for generating the req.values: see appendix.
-source("Question1/1bChart.R") # contains code for plotting the values.
+n <- 10; a <- 0.05; p <- seq(0.0001,0.9999,1/1000); z <- abs(qnorm(.5*a,0,1))
+
+Q1bdata <- tbl_df(p) %>%
+  rename(p = value) %>%
+  mutate(Wald = vapply(p,waldcover,0)) %>%
+  mutate("Adjusted-Wald" = vapply(p,adjwaldcover, 0)) %>%
+  mutate(Exact = vapply(p,exactcover,0)) %>%
+  mutate(Score = vapply(p,scorecover,0)) %>%
+  mutate("Bayes-Laplace" = vapply(p, blcover,0)) %>%
+  mutate(Jeffreys = vapply(p,jeffreyscover,0)) %>%
+  gather(key = covinterval, value = dens, -p)
+
+q1bchart <- ggplot(data = Q1bdata, aes(x = p, y = dens)) +
+  geom_hline(yintercept = 1-a, linetype = 5, colour = "red") +
+  geom_line() +
+  scale_y_continuous(labels = scales::percent,limits = c(0.75,1)) +
+  facet_wrap(~covinterval, nrow = 2) +
+  theme_tufte(base_size = 14) + 
+  scale_x_continuous(breaks = c(0,0.5,1)) +
+  ylab("Coverage (%)") +
+  xlab("Parameter (p)") +
+  theme(panel.margin.x=unit(1.5, "lines")) +
+  theme(axis.title.y=element_text(margin = margin(0,15,0,0))) +
+  theme(axis.title.x = element_text(margin = margin(15,0,0,0)))
+
 q1bchart # calls the chart.
 ```
 
@@ -181,25 +199,45 @@ q1bchart # calls the chart.
 (c) Repeat (b) for $n = 50$.
 
 ```{r Question1cData, echo = TRUE, cache = TRUE}
-n <- 50
-a <- 0.05
-p <- seq(0.0001,0.9999,1/1000)
-z <- abs(qnorm(.5*a,0,1))
-source("Question1/1cData.R")
-```
+n <- 50; a <- 0.05; p <- seq(0.0001,0.9999,1/1000); z <- abs(qnorm(.5*a,0,1))
 
+Q1cdata <- tbl_df(p) %>%
+  rename(p = value) %>%
+  mutate(Wald = vapply(p,waldcover,0)) %>%
+  mutate("Adjusted-Wald" = vapply(p,adjwaldcover, 0)) %>%
+  mutate(Exact = vapply(p,exactcover,0)) %>%
+  mutate(Score = vapply(p,scorecover,0)) %>%
+  mutate("Bayes-Laplace" = vapply(p, blcover,0)) %>%
+  mutate(Jeffreys = vapply(p,jeffreyscover,0)) %>%
+  gather(key = covinterval, value = dens, -p)
 
+q1cchart <- ggplot(data = Q1cdata, aes(x = p, y = dens)) +
+  geom_hline(yintercept = 1-a, linetype = 5, colour = "red") +
+  geom_line(size = 0.25) +
+  scale_y_continuous(labels = scales::percent, limits = c(0.8,1)) +
+  facet_wrap(~covinterval, nrow = 2) +
+  theme_tufte(base_size = 14) +
+  scale_x_continuous(breaks = c(0,.5,1)) +
+  ylab("Coverage (%)") +
+  xlab("Parameter (p)") +
+  theme(panel.margin.x=unit(1.5, "lines")) +
+  theme(axis.title.y=element_text(margin = margin(0,15,0,0))) +
+  theme(axis.title.x = element_text(margin = margin(15,0,0,0)))
 
-```{r Question1cChart}
-source("Question1/1cChart.R")
 q1cchart
 ```
 
 
 (d) Compare the minimum coverage of the six graphs at (c)
+Firslty, the minimum coverage of the Wald interval is terrible.
+ 
 
 ```{r Question1d}
-source("Question1/1d.R")
+
+Q1dCoverage50 <- Q1cdata %>%
+  group_by(covinterval) %>%
+  summarize(mean(dens), median(dens), min(dens))
+
 kable(Q1dCoverage50)
 ```
 
@@ -207,28 +245,36 @@ kable(Q1dCoverage50)
 (e) The adjusted Wald interval appears to perform well with respect to frequentist coverage, if close to nominal combined with reasonable minimum coverage is aimed for.
 From a Bayesian point of view, performance of individual intervals is just as, if not more, important. 
 Given $x = 0$, compare the adjusted Wald interval with the exact \& Score intervals (all two-sided), and with the Bayes-Laplace \& Jeffreys HPD intervals, for a range of values of $n$ and $\alpha$, comment on its limitations, and give an appropriate graphical illustration.
+Below, I've reproduced the upper limits for each interval - for n between 1 and 100 - for different values of alpha.
 
-```{r Question1e, cache = TRUE}
+
+```{r Question1e, cache = TRUE, echo = FALSE}
 source("Question1/1e.R")
-q1echart
+q1echart <- ggplot(data = chartdata, aes(x = n, y = value))
+```
+
+
+
+```{r Question1e2, cache = FALSE, fig.height = 10, fig.width  = 8, dependson = "Question1e"}
+q1e2chart <- q1echart +
+  geom_line(aes(group = covinterval, colour = covinterval), size  = 1) +
+  theme_few(base_size = 16) +
+  facet_wrap(~a) +
+  xlim(0,100) +
+  ylim(0,1) +
+  theme(legend.position = "bottom")
+q1e2chart
 ```
 
 
 \newpage
 
 
-```{r }
-################################################################################
-#
-# Question 2
-#
-################################################################################
-
 ```{r Q2Setup, include = FALSE}
 rm(list = ls())
 source("Question2/2setup.R")
 opts_chunk$set(warning = FALSE, echo = TRUE, cache = TRUE)
-opts_chunk$set(fig.width = 5, fig.height = 3, fig.align = "center")
+opts_chunk$set(fig.width = 8, fig.height = 6, fig.align = "center")
 ```
 
 
@@ -237,92 +283,79 @@ opts_chunk$set(fig.width = 5, fig.height = 3, fig.align = "center")
 (a) Develop an R function to find percentiles of a (general) Cauchy posterior as discussed by Jaynes (1976, Example 6) and Box \& Tiao (1973, p.64), to be used for the examples below.
 
 ```{r Question2a, eval = FALSE}
-source("Question2/2a.R")
-CauchyPercentage <- function(x, # a vector of samples
+CauchyPercentage <- function(y = NULL,# a value to test Pr[p < y]
+                             x, # a vector of samples
                              p, # a vector of possible parameters
-                             y = NULL # a value to test Pr[p < y]
-) {
-  cauchydens <- function(x,p){
-    
-    cauchydist <- function(x,p) {
-      H = vector(mode = "numeric",length = length(x))
-      for(i in 1:length(x)){
-        H[i] = (1+(x[i] - p)^2)^(-1)
-      }
-      return(prod(H))
-    }
-    dens = vapply(p,cauchydist,min(p), x = x)
-    c = (integrate(dens, -Inf, Inf)$value)^(-1)
-    data.frame(vparams = p, postdens = c*dens(p))
-  }
+                             climlow = -Inf,
+                             climhigh = Inf) {
   
-  df = cauchydens(x,p)
+  cauchydens = function(x,p){ # returns a df containing dens and param values.
+    cauchydist = function(x,p) { # Cauchy density described in notes.
+      H = vector(mode = "numeric",length = length(x))
+      for(i in 1:length(x)) {
+        H[i] = (1+(x[i] - p)^2)^(-1) }
+      return(prod(H)) }
+    
+    dens = function(p) vapply(p,cauchydist,min(p), x = x)
+    c = (integrate(dens, -Inf, Inf)$value)^(-1)
+    data.frame(vparams = p, postdens = c*dens(p)) }
+  
+  df = cauchydens(x,p) # Call the above function.
   
   yind = ifelse(length(which(df$vparams == y))==1,
                 which(df$vparams == y),
                 max(which(df$vparams < y)))
   
-  plot(df$vparams, df$postdens, type = 'l')
-  abline(v = df$vparams[yind])
-  abline(h = df[yind,"postdens"])
-  
-  cumdist = c*integrate(dens,-Inf,y)$value
-  
-  return((c(yind,df[yind,"postdens"],cumdist)))
+  c = (integrate(dens, climlow, climhigh)$value)^(-1)
+  c*integrate(dens,climlow,y)$value
 }
 
 CauchyHPD <- function(x, # vector of samples 
                       p, # vector of possible parameter values
                       alpha = 0.95, # HPD interval value
-                      tol = 0.0001) { # level of tolerance for exact HPD interval
+                      tol = 0.0001, # level of tolerance for exact HPD interval
+                      plot = TRUE) { 
   
-  cauchydens <- function(x,p){
-    
-    cauchydist <- function(x,p) {
+  cauchydens = function(x,p){ # returns a df containing dens and param values.
+    cauchydist = function(x,p) { # Cauchy density described in notes.
       H = vector(mode = "numeric",length = length(x))
-      for(i in 1:length(x)){
-        H[i] = (1+(x[i] - p)^2)^(-1)
-      }
-      return(prod(H))
-    }
+      for(i in 1:length(x)) {
+        H[i] = (1+(x[i] - p)^2)^(-1) }
+      return(prod(H)) }
+    
     dens = function(p) vapply(p,cauchydist,min(p), x = x)
     c = (integrate(dens, -Inf, Inf)$value)^(-1)
-    data.frame(vparams = p, postdens = c*dens(p))
-  }
+    data.frame(vparams = p, postdens = c*dens(p)) }
   
-  df = cauchydens(x,p)
+  df = cauchydens(x,p) # Call the above function.
   
-  cumdist = cumsum(df$postdens)*diff(df$vparams)[1]
-  post_median = which.min(abs(cumdist-0.5))
+  cumdist = cumsum(df$postdens)*diff(df$vparams)[1] # Cumulative distribution
+  post_median = which.min(abs(cumdist-0.5)) # The posterior median.
   
-  HPDlimits <- function(post_dens) { ## find lower and upper values for which
-    ## prob dens is closest to target value
+  # find lower and upper values for which prob dens is closest to target value
+  HPDlimits = function(post_dens) { 
     lower = which.min(abs(df$postdens[1:post_median]-post_dens))
     upper = which.min(abs(df$postdens[(post_median+1):length(df$postdens)]-post_dens))+post_median
-    limits = c(lower,upper)
-  }
+    limits = c(lower,upper) }
   
-  HPDlimitarea <- function(post_dens) {
+  HPDlimitarea = function(post_dens) { # find the area corresponding to that interval
     limitints = HPDlimits(post_dens)
     limitarea = sum(df$postdens[limitints[1]:limitints[2]])*diff(df$vparams)[1]
   }
-  ## find credible interval
+  
+  # Now calculate the HPD using the above functins.
   v2 = seq(0,max(df$postdens),by=tol)
   vals = sapply(v2,HPDlimitarea)
   w = which.min(abs(vals-alpha))
   r = c(df$vparams[HPDlimits(v2[w])])
-  names(r) = c("lower","upper")
-  par(mfrow = c(1,2))
-  plot(df$vparams, cumdist, type = 'l')
-  abline(h = 0.5)
-  abline(v = df$vparams[post_median], col = 'red')
-  abline(v = r["upper"], col = 'blue')
-  abline(v = r["lower"], col = 'blue')
-  plot(df$vparams, df$postdens, type = 'l')
-  abline(v = df$vparams[post_median], col = 'red')
-  abline(h = df[HPDlimits(v2[w])[1],"postdens"])
-  abline(v = r["upper"], col = 'blue')
-  abline(v = r["lower"], col = 'blue')
+  names(r) = c("Lower (HPD)","Upper (HPD)")
+  if(plot) {
+    plot(df$vparams, df$postdens, type = 'l', 
+         xlab = expression(theta), ylab = "Density")
+    abline(h = df[HPDlimits(v2[w])[1],"postdens"])
+    abline(v = r["Upper (HPD)"], col = 'blue')
+    abline(v = r["Lower (HPD)"], col = 'blue') }
+  
   return(r)
 }
 ```
@@ -332,29 +365,138 @@ CauchyHPD <- function(x, # vector of samples
 Explain why it is quite different from the confidence interval derived by Jaynes (p.202).
 
 ```{r Question2b}
-source("Question2/2b.R")
+x <- c(3,5); p <- seq(0,8,1/100)
+interval <- seq(0,3, by = 1/1000)
+h <- vector("numeric",2L)
+names(h) <- c("Lower (Central)", "Upper (Central)")
+h[1] <- optimize(CauchyPercentage,
+                 interval = interval,
+                 lower = min(interval),
+                 tol = .Machine$double.eps^0.25,
+                 x=x,
+                 p=p,
+                 alpha = 0.05)$minimum
+
+interval <- seq(5,8, by = 1/1000)
+h[2] <- optimize(CauchyPercentage,
+                 interval = interval,
+                 lower = min(interval),
+                 tol = .Machine$double.eps^0.25,
+                 x=x,
+                 p=p,
+                 alpha = 0.95)$minimum
+r <- CauchyHPD(x = x, p = p, alpha = 0.9, tol = 0.0001)
+abline(v = h[1], col = "red", lty = 2)
+abline(v = h[2], col = "red", lty = 2)
+c(r, h)
 ```
 
 
 (c) Consider Box \& Tiao's example of $n = 5$ observations $(11.4, 7.3, 9.8, 13.7, 10.6)$: plot the posterior and calculate 95\% central and HPD credible intervals and check $Pr[\theta < 11.5]$ given by Box \& Tiao.
+Here's the code and the graph.
 
 ```{r Question2c}
-source("Question2/2c.R")
+x <- c(11.4, 7.3, 9.8, 13.7, 10.6); p <- seq(5,15,by = 1/100)
+h <- vector("numeric",2L); names(h) <- c("Lower (Central)", "Upper (Central)")
+interval <- seq(5,10, by = 1/1000)
+h[1] <- optimize(CauchyPercentage, # Lower Central limit
+                 interval = interval,
+                 lower = min(interval),
+                 tol = .Machine$double.eps^0.25,
+                 x=x,
+                 p=p,
+                 alpha = 0.025)$minimum
+
+interval <- seq(10,15, by = 1/1000)
+
+h[2] <- optimize(CauchyPercentage, # Upper Central limit
+                 interval = interval,
+                 lower = min(interval),
+                 tol = .Machine$double.eps^0.25,
+                 x=x,
+                 p=p,
+                 alpha = 0.975)$minimum
+r <- CauchyHPD(x=x,p=p,alpha = 0.95,tol = 0.00001)
+abline(v = h[1], col = "red", lty = 2) # Lower Central limit
+abline(v = h[2], col = "red", lty = 2) # Upper Central limit
+
+c(r, h)
+CauchyPercentageNO(11.5, x=x, p=p)
 ```
 
 
 (d) Consider Berger's (1985, p.141) example of $n = 5$ observations $(4.0, 5.5, 7.5, 4.5, 3.0)$: calculate 95\% central and HPD credible intervals, with and without Berger's restriction $(\theta > 0)$.
+Firstly, without the restriction.
 
 ```{r Question2d}
-source("Question2/2d.R")
+x <- c(4.0, 5.5, 7.5, 4.5, 3.0); p <- seq(2,8,1/100)
+h <- vector("numeric",2L); names(h) <- c("Lower (Central)", "Upper (Central)")
+interval <- seq(2,5, by = 1/1000)
+h[1] <- optimize(CauchyPercentage, # Lower Central limit
+                 interval = interval,
+                 lower = min(interval),
+                 tol = .Machine$double.eps^0.25,
+                 x=x,
+                 p=p,
+                 alpha = 0.025)$minimum
+
+interval <- seq(6,8, by = 1/1000)
+h[2] <- optimize(CauchyPercentage, # Upper Central limit
+                 interval = interval,
+                 lower = min(interval),
+                 tol = .Machine$double.eps^0.25,
+                 x=x,
+                 p=p,
+                 alpha = 0.975)$minimum
+r <- CauchyHPD(x=x,p=p,alpha = 0.95,tol = 0.00001)
+abline(v = h[1], col = "red", lty = 2) # Lower Central limit
+abline(v = h[2], col = "red", lty = 2) # Upper Central limit
+c(r, h)
+```
+
+
+From this we can see that Berger's restriction won't affect this particular posterior. However, if we plot the negative version for the next question, we will see where this restriction may impact on our analysis.
+
+```{r Question2d2, cache = TRUE}
+x <- c(-4.0, -5.5, -7.5, -4.5, -3.0); p <- seq(-8,5,1/100)
+h <- vector("numeric",2L); names(h) <- c("Lower (Central)", "Upper (Central)")
+interval <- seq(-8,-5, by = 1/1000)
+h[1] <- optimize(CauchyPercentage,
+                 interval = interval,
+                 lower = min(interval),
+                 tol = .Machine$double.eps^0.25,
+                 x=x,
+                 p=p,
+                 alpha = 0.025)$minimum
+
+interval <- seq(-5,8, by = 1/1000)
+
+h[2] <- optimize(CauchyPercentage,
+                 interval = interval,
+                 lower = min(interval),
+                 tol = .Machine$double.eps^0.25,
+                 x=x,
+                 p=p,
+                 alpha = 0.975)$minimum
+r <- CauchyHPD(x=x,p=p,alpha = 0.95,tol = 0.00001)
+abline(v = h[1], col = "red", lty = 2) # upper Central limit
+abline(v = h[2], col = "red", lty = 2) # lower Central limit
+c(r, h)
 ```
 
 
 (e) Clearly, Berger's restriction $(\theta > 0)$ will sometimes lead to a posterior quite different from the unrestricted posterior.
 Plot this restricted posterior for the hypothetical negative version of Berger's example: i.e. $(-4.0, -5.5, -7.5, -4.5, -3.0)$, and calculate the 95\% HPD interval.
 
-```{r Question2e}
+```{r Question2eSetup, include = FALSE}
 source("Question2/2e.R")
+```
+
+
+
+```{r Question2e}
+x <- c(-4.0, -5.5, -7.5, -4.5, -3.0); p <- seq(0,5,1/1000)
+CauchyHPD(x=x,p=p, climlow = 0, climhigh = Inf)
 ```
 
 

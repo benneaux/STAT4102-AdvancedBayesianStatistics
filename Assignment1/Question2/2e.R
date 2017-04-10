@@ -2,8 +2,7 @@
 require(dplyr)
 require(ggplot2)
 require(ggthemes)
-x <- c(-4.0, -5.5, -7.5, -4.5, -3.0)
-p <- seq(0,5,1/1000)
+
 
 CauchyHPD <- function(x, # vector of samples 
                       p, # vector of possible parameter values
@@ -57,4 +56,4 @@ CauchyHPD <- function(x, # vector of samples
   return(r)
 }
 
-CauchyHPD(x=x,p=p, climlow = 0, climhigh = Inf)
+

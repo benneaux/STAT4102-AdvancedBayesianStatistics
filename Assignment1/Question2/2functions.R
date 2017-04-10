@@ -82,59 +82,10 @@ CauchyHPD <- function(x, # vector of samples
   w = which.min(abs(vals-alpha))
   r = c(df$vparams[HPDlimits(v2[w])])
   names(r) = c("lower","upper")
-  par(mfrow = c(1,2))
-  plot(df$vparams, cumdist, type = 'l')
-  abline(h = 0.5)
-  abline(v = df$vparams[post_median], col = 'red')
-  abline(v = r["upper"], col = 'blue')
-  abline(v = r["lower"], col = 'blue')
   plot(df$vparams, df$postdens, type = 'l')
-  abline(v = df$vparams[post_median], col = 'red')
   abline(h = df[HPDlimits(v2[w])[1],"postdens"])
   abline(v = r["upper"], col = 'blue')
   abline(v = r["lower"], col = 'blue')
   return(r)
 }
-
-
-
-
-HPD <- function(h, # height
-                mode, # how to split the uniroot interval 
-                dfunc, 
-                pfunc,
-                alpha = 0.95,
-                plot = TRUE){
-  
-  lt       = uniroot(f=function(x){ dfunc(x) - h}, 
-                     lower = 0, 
-                     upper = mode)$root
-  ut       = uniroot(f=function(x){ dfunc(x) - h}, 
-                     lower = mode,
-                     upper = 1)$root
-  
-  coverage = pfunc(ut) - pfunc(lt)
-  
-  hpdval   = abs(alpha - coverage)
-  
-  if (plot) {
-    th     = seq(0, 1, length=10000)
-    plot(th, dfunc(th),
-         t = "l", 
-         lty = 1,
-         xlab = expression(theta),
-         ylab = "posterior Density")
-    
-    abline(h = h)
-    segments(ut, 0, ut, dfunc(ut))
-    segments(lt, 0, lt, dfunc(lt))
-    title(
-      bquote(
-        paste("p(",.(round(lt, 5))," < ", theta, " < ",
-              .(round(ut,5)), " | " , y, ") = ",
-              .(round(coverage, 5)), ")")))
-  }
-  results <<- data.frame(lt,ut,coverage,h)
-  return(hpdval)}
-
 

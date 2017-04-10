@@ -9,6 +9,6 @@ spin(filename,
      format = "Rmd"
 )
 
-render("Assignment1/Assignment1.Rmd", clean = TRUE, quiet = TRUE)
+render("Assignment1/Assignment1.Rmd", clean = FALSE, quiet = FALSE)
 
 rm(list = ls())

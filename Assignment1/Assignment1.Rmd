@@ -23,52 +23,64 @@ I actually developed two functions. My initial attempts were based around the id
 
 ```{r Question1a1, echo = TRUE}
 
-solve.HPD.beta = function(shape1, shape2, credint = 0.95, plot=FALSE, ...){
-  
-  hpdfunc <- function(h, shape1, shape2){
+solve.HPD.beta = function(shape1, shape2, credint = 0.95, one.sided = FALSE,...){
+  if(shape1 <= 1 | one.sided == TRUE){
+    lt = 0
+    ut = qbeta(credint, shape1, shape2)
+    coverage = credint
+    results = data_frame("Lower"    = lt,
+                         "Upper"    = ut,
+                         "Coverage" = coverage,
+                         "Height"   = ut)
+    return(results)
+  }
+  if(shape1 > n){
+    lt = qbeta(1-credint, shape1, shape2)
+    ut = 1
+    coverage = credint
+    results = data_frame("Lower"    = lt,
+                         "Upper"    = ut,
+                         "Coverage" = coverage,
+                         "Height"   = lt)
+    return(results)
+  } else {
+    hpdfunc <- function(h, shape1, shape2){
+      mode = (shape1 - 1)/(shape1 + shape2 - 2)
+      lt = uniroot(f=function(x){ dbeta(x,shape1, shape2) - h},
+                   lower=0, upper=mode)$root
+      ut = uniroot(f=function(x){ dbeta(x,shape1, shape2) - h},
+                   lower=mode, upper=1)$root
+      coverage = pbeta(ut, shape1, shape2) - pbeta(lt, shape1, shape2)
+      
+      hpdval = abs(credint-coverage)
+      
+      return(hpdval)
+    }
+    upper = max(dbeta(seq(0,1, by = 0.001), shape1, shape2)) 
+    
+    h = optimize(hpdfunc,
+                 interval = seq(0,upper,by = 0.001),
+                 lower = 0,
+                 tol = .Machine$double.eps,
+                 shape1,
+                 shape2)
+    
+    h <- h$minimum
     mode = (shape1 - 1)/(shape1 + shape2 - 2)
     lt = uniroot(f=function(x){ dbeta(x,shape1, shape2) - h},
                  lower=0, upper=mode)$root
     ut = uniroot(f=function(x){ dbeta(x,shape1, shape2) - h},
                  lower=mode, upper=1)$root
     coverage = pbeta(ut, shape1, shape2) - pbeta(lt, shape1, shape2)
-    
-    hpdval = abs(credint-coverage)
-    
-    results <<- data_frame("Lower"    = lt,
-                           "Upper"    = ut,
-                           "Coverage" = coverage,
-                           "Height"   = h)
-    return(hpdval)
-  }
-  
-  # an upper limit for the hpdfunc optimiser.
-  upper = max(dbeta(seq(0,1, by = 0.001), shape1, shape2)) 
-
-    h = optimize(hpdfunc,
-               interval = seq(0,upper,by = 0.001),
-               lower = 0,
-               tol = .Machine$double.eps,
-               shape1,
-               shape2) 
-  
-  if (plot) {
-    th = seq(0, 1, length=10000)
-    plot(th, dbeta(th, shape1, shape2), t="l",
-         xlab=expression(theta), ylab="Posterior Dens.") #Plot the curve
-    abline(h=h) # plot the optimised 'height'
-    segments(results[[2]],0,results[[2]],
-             dbeta(results[[2]],shape1,shape2)) # the upper limit
-    segments(results[[1]],0,results[[1]],
-             dbeta(results[[1]],shape1,shape2)) # the lower limit
-    title(bquote(paste("p(", .(round(results[[1]], 5))," < ", theta, " < ",
-                       .(round(results[[2]],5)), " | " , y, ") = ",
-                       .(round(results[[3]], 5))))) #title
-  }
-  return(results)}
+    results = data_frame("Lower"    = lt,
+                         "Upper"    = ut,
+                         "Coverage" = coverage,
+                         "Height"   = h)
+    return(results)
+  }}
 
 y=1; n=100; a=1; b=1; p=0.95
-df <- solve.HPD.beta(shape1 = y + a, shape2 = n - y + b, plot = TRUE)
+solve.HPD.beta(shape1 = y + a, shape2 = n - y + b)
 ```
 
 
@@ -114,39 +126,35 @@ exactcover <- function(p,x = 0:n) { # Cloppper - Pearson "Exact" interval.
 }
 jeffreyscover <- function(p,x = 0:n,...) { # Jeffrey's HPD interval
   dens  = dbinom(x,n,p)
-  if(x == 0 & length(x) == 1){ # for one-sided intervals.
-    hig = solve.HPD.beta(shape1 = 0.5, shape2 = n + 0.5,...)
-    intvals = as.numeric(p <= hig)
-    sum(intvals * dens)
-  } else { # for two-sided intervals
+ # for two-sided intervals
     data <-matrix(data = NA, nrow = n+1, ncol = 2)
     for(i in 0:n){
       data[i+1,] = solve.HPD.beta(shape1 = i + 0.5, shape2 = n - i + 0.5,...)
     }
     intvals = as.numeric(data[,1] <= p & p <= data[,2])
     sum(intvals * dens)
-  }
 }
 blcover <- function(p,x = 0:n,...) { # B-L HPD interval.
   dens = dbinom(x,n,p)
-  if(x == 0 & length(x) == 1){
-    hig = solve.HPD.beta(shape1 = 1, shape2 = n + 1,...)
-    intvals = as.numeric(p <= hig)
-    sum(intvals * dens)
-  } else {
     data <-matrix(data = NA, nrow = n+1, ncol = 2)
     for(i in 0:n){
       data[i+1,] = solve.HPD.beta(shape1 = i + 1, shape2 = n - i + 1,...)
     }
     intvals = as.numeric(data[,1] <= p & p <= data[,2])
     sum(intvals * dens)
-  }
 }
-blcover0 <- function(p,x = 0,...) {
-  dens = dbinom(x,n,p)
-  hig = HDIofqbeta(shape1 = 1, shape2 = n + 1,one.sided = TRUE,...)
-  intvals = as.numeric(p <= hig)
-  sum(intvals * dens)
+blcover0 <- function(p,x = 0,...) { # for one-sided intervals
+  fpx = dbinom(x,n,p)
+  hig = solve.HPD.beta(shape1 = 1, shape2 = n + 1,...)
+  inies = as.numeric(p <= hig)
+  sum(inies * fpx)
+}
+
+jeffreyscover0 <- function(p,x = 0,...) { # for one-sided intervals
+  fpx = dbinom(x,n,p)
+  hig = solve.HPD.beta(shape1 = 0.5, shape2 = n + 0.5,...)
+  inies = as.numeric(p <= hig)
+  sum(inies * fpx)
 }
 ```
 
@@ -200,8 +208,9 @@ kable(Q1dCoverage50)
 From a Bayesian point of view, performance of individual intervals is just as, if not more, important. 
 Given $x = 0$, compare the adjusted Wald interval with the exact \& Score intervals (all two-sided), and with the Bayes-Laplace \& Jeffreys HPD intervals, for a range of values of $n$ and $\alpha$, comment on its limitations, and give an appropriate graphical illustration.
 
-```{r Question1e, eval = FALSE}
+```{r Question1e, cache = TRUE}
 source("Question1/1e.R")
+q1echart
 ```
 
 
@@ -218,7 +227,7 @@ source("Question1/1e.R")
 ```{r Q2Setup, include = FALSE}
 rm(list = ls())
 source("Question2/2setup.R")
-opts_chunk$set(warning = FALSE, echo = TRUE, eval = FALSE)
+opts_chunk$set(warning = FALSE, echo = TRUE, cache = TRUE)
 opts_chunk$set(fig.width = 5, fig.height = 3, fig.align = "center")
 ```
 

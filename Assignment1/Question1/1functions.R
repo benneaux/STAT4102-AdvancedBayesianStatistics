@@ -1,93 +1,13 @@
-# HDIofqbeta = function(shape1, 
-#                       shape2, 
-#                       credint = 0.95,
-#                       tol = 1e-8,
-#                       plot = FALSE,
-#                       one.sided = FALSE) {
-#   
-#   if(one.sided){  # returns the one-sided interval if required.
-#     return(qbeta(credint,
-#                  shape1,
-#                  shape2))
-#   } else {
-#     
-#     # a function to calculate the interval for specific values of the upper and
-#     # lower limits
-#     
-#     interval = function(lowint,  # for 95%: 0 <= lowint <=0.05
-#                         credint, # e.g. 95%
-#                         shape1,  # i.e: y - a
-#                         shape2   # i.e: n - y + b
-#     ){
-#       
-#       hig = qbeta(credint + lowint, # the upper limit
-#                   shape1,
-#                   shape2) 
-#       
-#       low = qbeta(lowint, # the lower limit.
-#                   shape1, 
-#                   shape2)
-#       
-#       hig - low # returns the interval.
-#     }
-#     
-#     alpha    = 1 - credint # an upper limit for the interval optimiser.
-#     length  = optimize(interval, 
-#                        c(0, alpha),
-#                        shape1 = shape1,
-#                        shape2 = shape2,
-#                        credint = 0.95,
-#                        tol = 1e-8)
-#     
-#     HDIinterval = length$minimum # the actual optimised value from 0 to 
-#     # the lower limit.
-#     
-#     lt = qbeta(HDIinterval, shape1, shape2)
-#     ut = qbeta(HDIinterval + credint, shape1, shape2)
-#     coverage = credint
-#     l = HDIinterval
-#     
-#     
-#     if (plot) {
-#       th = seq(0, 1, length=10000)
-#       plot(th, dbeta(th, shape1, shape2),
-#            t="l",xlab=expression(theta),
-#            ylab="Posterior Dens.")
-#       abline(h = dbeta(results[[1]],shape1,shape2))
-#       segments(results[[2]],0,results[[2]],dbeta(results[[2]],shape1,shape2))
-#       segments(results[[1]],0,results[[1]],dbeta(results[[1]],shape1,shape2))
-#       title(bquote(paste("p(", .(round(results[[1]], 5))," < ", theta, " < ",
-#                          .(round(results[[2]],5)), " | " , y, ") = ",
-#                          .(round(results[[3]], 5)))))
-#     }
-#     
-#     return(c(qbeta(HDIinterval, shape1, shape2),
-#              qbeta(HDIinterval + credint, shape1, shape2)))
-#   }
-# }
-# 
-solve.HPD.beta = function(shape1, shape2, credint = 0.95, plot=FALSE, ...){
-if(shape1 <= 1){
+solve.HPD.beta = function(shape1, shape2, credint = 0.95, one.sided = FALSE,...){
+if(shape1 <= 1| one.sided == TRUE){
   lt = 0
   ut = qbeta(credint, shape1, shape2)
   coverage = credint
-  results = data_frame("Lower"      = lt,
+  results = data_frame("Lower"    = lt,
                        "Upper"    = ut,
                        "Coverage" = coverage,
                        "Height"   = ut)
-  if (plot) {
-    th = seq(0, 1, length=10000)
-    plot(th, dbeta(th, shape1, shape2), t="l",
-         xlab=expression(theta), ylab="Posterior Dens.") #Plot the curve
-    abline(h=results[[4]]) # plot the optimised 'height'
-    segments(results[[2]],0,results[[2]],
-             dbeta(results[[2]],shape1,shape2)) # the upper limit
-    segments(results[[1]],0,results[[1]],
-             dbeta(results[[1]],shape1,shape2)) # the lower limit
-    title(bquote(paste("p(", .(round(results[[1]], 9))," < ", theta, " < ",
-                       .(round(results[[2]],9)), " | " , y, ") = ",
-                       .(round(results[[3]], 9))))) #title
-  }
+
   return(c(results[[1]],results[[2]]))
 }
 if(shape1 > n){
@@ -98,19 +18,7 @@ if(shape1 > n){
                        "Upper"    = ut,
                        "Coverage" = coverage,
                        "Height"   = lt)
-  if (plot) {
-    th = seq(0, 1, length=10000)
-    plot(th, dbeta(th, shape1, shape2), t="l",
-         xlab=expression(theta), ylab="Posterior Dens.") #Plot the curve
-    abline(h=results[[4]]) # plot the optimised 'height'
-    segments(results[[2]],0,results[[2]],
-             dbeta(results[[2]],shape1,shape2)) # the upper limit
-    segments(results[[1]],0,results[[1]],
-             dbeta(results[[1]],shape1,shape2)) # the lower limit
-    title(bquote(paste("p(", .(round(results[[1]], 9))," < ", theta, " < ",
-                       .(round(results[[2]],9)), " | " , y, ") = ",
-                       .(round(results[[3]], 9))))) #title
-  }
+
   return(c(results[[1]],results[[2]]))
 } else {
   hpdfunc <- function(h, shape1, shape2){
@@ -134,7 +42,7 @@ if(shape1 > n){
                shape1,
                shape2)
   
-  h <- h$minimum
+  h = h$minimum
   mode = (shape1 - 1)/(shape1 + shape2 - 2)
   lt = uniroot(f=function(x){ dbeta(x,shape1, shape2) - h},
                lower=0, upper=mode)$root
@@ -145,19 +53,7 @@ if(shape1 > n){
                        "Upper"    = ut,
                        "Coverage" = coverage,
                        "Height"   = h)
-  if (plot) {
-    th = seq(0, 1, length=10000)
-    plot(th, dbeta(th, shape1, shape2), t="l",
-         xlab=expression(theta), ylab="Posterior Dens.") #Plot the curve
-    abline(h=results[[4]]) # plot the optimised 'height'
-    segments(results[[2]],0,results[[2]],
-             dbeta(results[[2]],shape1,shape2)) # the upper limit
-    segments(results[[1]],0,results[[1]],
-             dbeta(results[[1]],shape1,shape2)) # the lower limit
-    title(bquote(paste("p(", .(round(results[[1]], 9))," < ", theta, " < ",
-                       .(round(results[[2]],9)), " | " , y, ") = ",
-                       .(round(results[[3]], 9))))) #title
-  }
+
   return(c(results[[1]],results[[2]]))
 }}
 
@@ -219,8 +115,15 @@ blcover <- function(p,x = 0:n,...) {
 
 blcover0 <- function(p,x = 0,...) {
   fpx = dbinom(x,n,p)
-    hig = HDIofqbeta(shape1 = 1, shape2 = n + 1,one.sided = TRUE,...)
+    hig = solve.HPD.beta(shape1 = 1, shape2 = n + 1,...)
     inies = as.numeric(p <= hig)
     sum(inies * fpx)
+}
+
+jeffreyscover0 <- function(p,x = 0,...) {
+  fpx = dbinom(x,n,p)
+  hig = solve.HPD.beta(shape1 = 0.5, shape2 = n + 0.5,...)
+  inies = as.numeric(p <= hig)
+  sum(inies * fpx)
 }
 

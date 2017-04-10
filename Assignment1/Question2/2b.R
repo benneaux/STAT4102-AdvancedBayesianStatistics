@@ -1,5 +1,5 @@
 x <- c(3,5)
-p <- seq(0,30,1/100)
+p <- seq(0,8,1/100)
 
 
 r <- CauchyHPD(x = x, p = p, alpha = 0.9, tol = 0.0001)
@@ -14,7 +14,7 @@ g <- vector("numeric",2L)
                    p=p,
                    alpha = 0.05)$minimum
   
-  interval <- seq(5,20, by = 1/1000)
+  interval <- seq(5,8, by = 1/1000)
   
   g[2] <- optimize(CauchyPercentage,
                    interval = interval,
@@ -24,12 +24,5 @@ g <- vector("numeric",2L)
                    p=p,
                    alpha = 0.95)$minimum
   
-# Q2bData <- tbl_df(p) %>%
-#             rename(Parameter = value) %>%
-#             mutate(Density = c*dens(p))
-# 
-# Q2bChart <- ggplot(data = Q2bData, aes(x = Parameter, y = Density)) +
-#               geom_area() +
-#               theme_tufte(base_size = 14)
 
 CauchyPercentage(y = 19, alpha = 0.975, x,p)

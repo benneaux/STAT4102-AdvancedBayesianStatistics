@@ -12,7 +12,6 @@ CauchyHPD <- function(x, # vector of samples
                       climlow = 0,
                       climhigh = Inf) { # level of tolerance for exact HPD interval
   
-  cauchydens <- function(x,p){
     
     cauchydist <- function(x,p) {
       H = vector(mode = "numeric",length = length(x))
@@ -21,15 +20,12 @@ CauchyHPD <- function(x, # vector of samples
       }
       return(prod(H))
     }
-    dens = function(p) vapply(p,cauchydist,min(p), x = x)
-    c = (integrate(dens, climlow, climhigh)$value)^(-1)
-    data.frame(vparams = p, postdens = c*dens(p))
-  }
-  
-  df = cauchydens(x,p)
+    
+  dens = function(p) vapply(p,cauchydist,min(p), x = x)
+  c = (integrate(dens, climlow , climhigh)$value)^(-1)
+  df = data.frame(vparams = p, postdens = c*dens(p))
 
   cumdist = cumsum(df$postdens)*diff(df$vparams)[1]
-  c = (integrate(dens, 0, climhigh)$value)^(-1)
   # cumdist = c*integrate(dens,climlow,y)$value
   difference = abs(alpha - cumdist)
   post_median = which.min(abs(cumdist-0.5))
@@ -51,25 +47,14 @@ CauchyHPD <- function(x, # vector of samples
   w = which.min(abs(vals-alpha))
   r = c(df$vparams[HPDlimits(v2[w])],c*integrate(dens,climlow,df$vparams[HPDlimits(v2[w])][2])$value)
   names(r) = c("lower","upper","dens")
-  par(mfrow = c(1,2))
-  plot(df$vparams, cumdist, type = 'l')
-  abline(h = alpha)
-  abline(v = df$vparams[post_median], col = 'red')
-  abline(v = r["upper"], col = 'blue')
-  plot(df$vparams, df$postdens, type = 'l')
-  abline(v = df$vparams[post_median], col = 'red')
+
+  plot(df$vparams, df$postdens, type = 'l',xlab = expression(theta),
+       ylab = "Density")
   abline(h = df[HPDlimits(v2[w])[2],"postdens"])
   abline(v = r["upper"], col = 'blue')
-  return(r)
+  title(bquote(paste("Cauchy Dens. with ", theta," > 0")))
   
+  return(r)
 }
 
-CauchyHPD(x=x,p=p)
-
-# Q2eData <- tbl_df(p) %>%
-#   rename(Parameter = value) %>%
-#   mutate(Density = c*dens(p))
-# 
-# Q2eChart <- ggplot(data = Q2eData, aes(x = Parameter, y = Density)) +
-#   geom_area() +
-#   theme_tufte(base_size = 14)
+CauchyHPD(x=x,p=p, climlow = 0, climhigh = Inf)

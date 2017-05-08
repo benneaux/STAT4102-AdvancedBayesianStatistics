@@ -1,0 +1,8 @@
+---
+title: "Ass2Q1b"
+output: html_notebook
+---
+
+ (b) Assuming Gamma(a,b) priors for two Poisson parameters $\lambda_1$ and $\lambda_2$, derive the posterior for $\phi = \lambda_1 / \lambda_2$. (Hint: use nuisance parameter $\mu = \lambda_2$).
+  
+  For 

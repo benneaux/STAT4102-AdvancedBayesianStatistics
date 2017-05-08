@@ -1,0 +1,15 @@
+model
+{
+    for (i in 1:batches) {
+        m[i] ~ dnorm(theta, tau.btw)
+        for (j in 1:samples) {
+            y[j, i] ~ dnorm(m[i], tau.with)
+        }
+    }
+    sigma2.with <- 1/tau.with
+    tau.with ~ dgamma(0.001, 0.001)
+    ICC ~ dunif(0.00000E+00, 1)
+    sigma2.btw <- sigma2.with * (ICC/(1 - ICC))
+    tau.btw <- 1/sigma2.btw
+    theta ~ dflat()
+}

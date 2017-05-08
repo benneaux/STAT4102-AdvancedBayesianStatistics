@@ -1,0 +1,19 @@
+model
+{
+    for (i in 1:I) {
+        m[i] ~ dnorm(theta, tau.a)
+        for (j in 1:J) {
+            y[i, j] ~ dnorm(m[i], tau.b)
+            for (k in 1:K) {
+                y[i, j, k] ~ dnorm(y[i, j], tau.c)
+            }
+        }
+    }
+    sigma2.a <- 1/tau.b
+    sigma2.b <- 1/tau.b
+    sigma2.c <- 1/tau.c
+    tau.a ~ dgamma(0.001, 0.001)
+    tau.b ~ dgamma(0.001, 0.001)
+    tau.c ~ dgamma(0.001, 0.001)
+    theta ~ dflat()
+}

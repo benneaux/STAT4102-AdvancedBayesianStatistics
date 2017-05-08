@@ -1,0 +1,8 @@
+base
+knitr
+rmarkdown
+dplyr
+lubridate
+ggplot2
+tidyr
+ggthemes

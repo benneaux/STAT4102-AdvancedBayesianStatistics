@@ -1,0 +1,147 @@
+---
+title: "2c"
+author: "Benjamin Moran"
+date: "8 May 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+library(R2OpenBUGS)
+library(coda)
+library(tidyverse)
+library(lattice)
+opts_chunk$set(echo = TRUE)
+
+dfI <-  rep(seq(1,10),4)
+dfJ <- c(rep(1,20),rep(2,20))
+dfK <- c(rep(1,10),rep(2,10),rep(1,10),rep(2,10))
+df <- cbind(dfI,dfJ,dfK)
+
+dfJ1K1 <- c(2.004,4.342,0.869,3.531,2.579,-1.404,-1.676,1.670,2.141,-1.229)
+dfJ1K2 <- c(2.713,4.229,-2.621,4.185,4.271,-1.003,-0.208,2.426,3.527,-0.596)
+dfJ2K1 <- c(0.602,3.344,-3.896,1.722,-2.101,-0.755,-9.139,1.834,0.462,4.471)
+dfJ2K2 <- c(0.252,3.057,-3.696,0.380,0.651,-2.202,-8.653,1.200,0.665,1.606)
+df2 <- c(dfJ1K1,dfJ1K2,dfJ2K1,dfJ2K2)
+
+df3 <- cbind(df,df2)
+colnames(df3) <- c("I","J","K","Sample")
+df3 <- as.data.frame(df3) %>%
+  mutate(I = as.factor(I)) %>%
+  mutate(J = as.factor(J)) %>%
+  mutate(K = as.factor(K))
+rm(df,dfI,dfJ,dfK,df2,dfJ1K1,dfJ1K2,dfJ2K1,dfJ2K2)
+```
+
+(b)  Use WinBUGS for a Bayesian analysis of (a), and find reasonable point and interval estimates for $\sigma_1^2$ and $\sigma_2^2$. Include graphs, including one of the joint posterior. [6 marks] 
+
+```{r}
+(BT3 <- summary(aov(Sample~(I/J/K),df3)))
+(m1 <- BT3[[1]]$`Mean Sq`[3])
+(m2 <- (BT3[[1]]$`Mean Sq`[2]-BT3[[1]]$`Mean Sq`[3])/2)
+(m3 <- (BT3[[1]]$`Mean Sq`[1]-BT3[[1]]$`Mean Sq`[2])/4)
+(mAll <- m1+m2+m3)
+(m1/mAll)
+(m2/mAll)
+(m3/mAll)
+```
+
+
+```{r model, eval=FALSE}
+#define the model
+library(R2OpenBUGS)
+boxtiao3model <- function(){
+  for(i in 1 : I) {
+    m[i] ~ dnorm(theta,  tau.I)
+    for(j in 1 : J) {
+      y[i , j] ~ dnorm(m[i], tau.J)
+      for(k in 1: K){
+        z[i,j,k] ~ dnorm(y[i,j], tau.K)
+      }
+    }
+  }
+  sigma2.I <- 1/tau.I
+  tau.I ~ dgamma(0.001, 0.001)
+  sigma2.J <- 1/tau.J
+  tau.J ~ dgamma(0.001, 0.001)
+  sigma2.K <- 1/tau.K
+  tau.K ~ dgamma(0.001, 0.001)
+  theta ~ dflat()
+}
+# write the model code out to a file
+write.model(boxtiao3model, "boxtiao3model.txt")
+model.file1 = paste(getwd(),"boxtiao3model.txt", sep="/")
+#prepare the data for input into OpenBUGS
+I <- 10
+J <- 2
+K <- 2
+y <- as.matrix(df3)
+  
+data <- list ("I","J","K","y", .Dim = c(10,2,2))
+
+#initialization of variables
+inits <- function(){
+  list(theta=1, tau.I=1, tau.J=4, tau.K=2)
+}
+
+WINE="/opt/local/bin/wine"
+WINEPATH="/opt/local/bin/winepath"
+OpenBUGS.pgm=paste0("/Users/benjamin/Applications/wine/",
+                    "drive_c/ProgramFiles/OpenBUGS/OpenBUGS323/OpenBUGS.exe")
+
+#these are the parameters to save
+parameters = c("sigma2.I","sigma2.J","sigma2.K")
+
+#run the model
+bt3.sim <- bugs(data, 
+                 inits, 
+                 model.file = model.file1,
+                 parameters=parameters,
+                 n.burnin = 2000,
+                 n.chains = 5, 
+                 n.iter = 10000, 
+                 OpenBUGS.pgm=OpenBUGS.pgm, 
+                 WINE=WINE, 
+                 WINEPATH=WINEPATH,
+                 useWINE=T,
+                 codaPkg = T,
+                 debug = T)
+```
+
+```{r coda, eval=FALSE}
+out.coda <- read.bugs(dyes.sim)
+plot(out.coda)
+HPDinterval(out.coda)
+densityplot(out.coda)
+plot(out.coda)
+(out.summary <- summary(out.coda, q=c(0.025, 0.975)))
+
+sigma2_with_stat <- c(out.summary$statistics[2,1],
+out.summary$q["sigma2.btw",])
+sigma2_btw_stat <- c(out.summary$statistics[3,1],
+out.summary$q["sigma2.with",])
+
+summary_stats <- rbind(sigma2.with = sigma2_with_stat,sigma2.btw = sigma2_btw_stat)
+colnames(summary_stats)[1] <- "Mean"
+summary_stats
+```
+
+
+```{r}
+dfI <-  rep(seq(1,10),4)
+dfJ <- c(rep(1,20),rep(2,20))
+dfK <- c(rep(1,10),rep(2,10),rep(1,10),rep(2,10))
+df <- cbind(dfI,dfJ,dfK)
+
+dfJ1K1 <- c(2.004,4.342,0.869,3.531,2.579,-1.404,-1.676,1.670,2.141,-1.229)
+dfJ1K2 <- c(2.713,4.229,-2.621,4.185,4.271,-1.003,-0.208,2.426,3.527,-0.596)
+dfJ2K1 <- c(0.602,3.344,-3.896,1.722,-2.101,-0.755,-9.139,1.834,0.462,4.471)
+dfJ2K2 <- c(0.252,3.057,-3.696,0.380,0.651,-2.202,-8.653,1.200,0.665,1.606)
+df2 <- c(dfJ1K1,dfJ1K2,dfJ2K1,dfJ2K2)
+df <- NA
+for(i in 1:length(dfJ1K1)){
+  test <- c(dfJ1K1[i],dfJ1K2[i],dfJ2K1[i],dfJ2K2[i])
+  df <- c(df,test)
+}
+```
+

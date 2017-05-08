@@ -1,0 +1,8 @@
+library(knitr)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(rmarkdown)
+library(tidyr)
+library(ggthemes)
+library(grid)

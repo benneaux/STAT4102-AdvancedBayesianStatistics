@@ -1,0 +1,41 @@
+---
+title: "2a"
+author: "Benjamin Moran"
+date: "8 May 2017"
+output: html_document
+---
+
+```{r setup, include = FALSE}
+rm(list = ls())
+library(knitr)
+library(tidyverse)
+library(lme4)
+library(broom)
+opts_chunk$set(warning = FALSE, echo = TRUE, cache = TRUE)
+opts_chunk$set(fig.width = 8, fig.height = 6, fig.align = "center")
+data("Dyestuff2")
+```
+
+(a) Use e.g. SAS (PROC VARCOMP) to perform a classical analysis of the data in Table 5.1.4 of Box & Tiao (1973), based on finding point estimates only.
+
+I'll be using R. First, let's confirm the results reported by Box & Tiao (1973), using frequentist methods.
+
+```{r anova}
+library(lme4)
+data("Dyestuff2")
+D2aov <- aov(Yield ~ Batch, Dyestuff2)
+(D2summary <- summary(D2aov))
+(sigma2_with <- D2summary[[1]]$`Mean Sq`[2])
+(sigma2_btw <- (D2summary[[1]]$`Mean Sq`[1] - sigma2_with)/D2summary[[1]]$Df[1])
+```
+
+These results match what was reported by Box & Tiao (1973). Next, we can attempt to fit a linear model using the REML method.
+
+```{r}
+(D2REML <- lmer(Yield ~ 1 + (1|Batch), Dyestuff2, REML=TRUE))
+D2REML <- broom::tidy(D2REML)
+(sigma2_with <- D2REML[which(D2REML$group == "Residual"),"estimate"]^2)
+(sigma2_with <- D2REML[which(D2REML$group == "Batch"),"estimate"]^2)
+```
+
+We can see here that the between Batch variance has been set to $0$ automatically by the REML method, because it uses

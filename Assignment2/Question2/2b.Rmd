@@ -1,0 +1,99 @@
+---
+title: "2b"
+author: "Benjamin Moran"
+date: "8 May 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+library(R2OpenBUGS)
+library(coda)
+library(tidyverse)
+library(lattice)
+opts_chunk$set(echo = TRUE)
+```
+
+(b)  Use WinBUGS for a Bayesian analysis of (a), and find reasonable point and interval estimates for $\sigma_1^2$ and $\sigma_2^2$. Include graphs, including one of the joint posterior. [6 marks] 
+
+```{r model}
+#define the model
+library(R2OpenBUGS)
+dyes2model <- function(){
+  for(i in 1 : batches) {
+    m[i] ~ dnorm(theta,  tau.btw)
+    for(j in 1 : samples) {
+     y[j , i] ~ dnorm(m[i], tau.with)
+    }
+  }
+  sigma2.with <- 1/tau.with
+  tau.with ~ dgamma(0.001, 0.001)
+  
+  ICC ~ dunif(0,1)
+  sigma2.btw <- sigma2.with*(ICC/(1-ICC))
+  tau.btw <- 1/sigma2.btw
+  theta ~ dflat()
+  }
+# write the model code out to a file
+write.model(dyes2model, "dyes2model.txt")
+model.file1 = paste(getwd(),"dyes2model.txt", sep="/")
+library(lme4)
+data("Dyestuff2")
+#prepare the data for input into OpenBUGS
+batches <- 6
+samples <- 5
+y <- tbl_df(Dyestuff2) %>%
+  mutate(samp = rep(seq(1,5,1),6)) %>%
+  spread(Batch, Yield) %>%
+  dplyr::select(-1)
+y <- as.matrix(y)
+  
+data <- list ("batches","samples","y")
+
+#initialization of variables
+inits <- function(){
+  list(theta=5, tau.with=1, ICC=0.5)
+}
+
+WINE="/opt/local/bin/wine"
+WINEPATH="/opt/local/bin/winepath"
+OpenBUGS.pgm=paste0("/Users/benjamin/Applications/wine/",
+                    "drive_c/ProgramFiles/OpenBUGS/OpenBUGS323/OpenBUGS.exe")
+
+#these are the parameters to save
+parameters = c("sigma2.with","sigma2.btw")
+
+#run the model
+dyes.sim <- bugs(data, 
+                 inits, 
+                 model.file = model.file1,
+                 parameters=parameters,
+                 n.burnin = 2000,
+                 n.chains = 5, 
+                 n.iter = 10000, 
+                 OpenBUGS.pgm=OpenBUGS.pgm, 
+                 WINE=WINE, 
+                 WINEPATH=WINEPATH,
+                 useWINE=T,
+                 codaPkg = T,
+                 debug = F)
+```
+
+```{r coda}
+out.coda <- read.bugs(dyes.sim)
+plot(out.coda)
+HPDinterval(out.coda)
+densityplot(out.coda)
+plot(out.coda)
+(out.summary <- summary(out.coda, q=c(0.025, 0.975)))
+
+sigma2_with_stat <- c(out.summary$statistics[2,1],
+out.summary$q["sigma2.btw",])
+sigma2_btw_stat <- c(out.summary$statistics[3,1],
+out.summary$q["sigma2.with",])
+
+summary_stats <- rbind(sigma2.with = sigma2_with_stat,sigma2.btw = sigma2_btw_stat)
+colnames(summary_stats)[1] <- "Mean"
+summary_stats
+```
+

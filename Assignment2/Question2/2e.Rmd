@@ -6,12 +6,13 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+library(knitr)
+library(tidyverse)
+opts_chunk$set(echo = TRUE)
+df <- readRDS("Data/PigmentPaste.rds")
 ```
 
 ```{r data}
-pigpaste <- read.csv("Data/PigmentPaste.csv") %>%
-  mutate(Batch = as.factor(Batch)) %>%
-  mutate(Sample = as.factor(Sample))
+
 ```
 

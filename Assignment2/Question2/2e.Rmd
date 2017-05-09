@@ -1,0 +1,17 @@
+---
+title: "2e"
+author: "B.Moran"
+date: "9 May 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r data}
+pigpaste <- read.csv("Data/PigmentPaste.csv") %>%
+  mutate(Batch = as.factor(Batch)) %>%
+  mutate(Sample = as.factor(Sample))
+```
+

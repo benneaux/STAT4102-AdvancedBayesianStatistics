@@ -1,14 +1,15 @@
 model
 {
     for (i in 1:I) {
-        m[i] ~ dnorm(theta, tau.I)
-        for (j in 1:J) {
-            y[i, j] ~ dnorm(m[i], tau.J)
-            for (k in 1:K) {
-                z[i, j, k] ~ dnorm(y[i, j], tau.K)
-            }
+      for (j in 1:J) {
+        for (k in 1:K) {
+          mu[i] ~ dnorm(theta,tau.I)
+          mu[i,j] ~ dnorm(mu[i], tau.J)
+          mu[i,j,k] ~ dnorm(mu[i,j], tau.K)
         }
+      }
     }
+    
     sigma2.I <- 1/tau.I
     tau.I ~ dgamma(0.001, 0.001)
     sigma2.J <- 1/tau.J

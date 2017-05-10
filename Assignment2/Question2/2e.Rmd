@@ -12,7 +12,224 @@ opts_chunk$set(echo = TRUE)
 df <- readRDS("Data/PigmentPaste.rds")
 ```
 
-```{r data}
+```{r model, eval = FALSE}
+# MODEL
 
+model{
+	for( i in 1 : I ) {
+		a[i] ~ dnorm(0.0, tauI)
+		for( j in 1 : J ) {
+			b[i , j] ~ dnorm(0.0, tauJ)
+			for( k in 1 : K ) {
+				e[i , j , k] <- theta + a[i] + b[i , j]
+				y[i , j , k] ~ dnorm(e[i , j , k], tauK)
+			}
+		}
+	}
+  
+	## Priors
+  
+  theta ~ dflat() # sample mean
+	
+	tauI ~ dgamma(0.001, 0.001) # Between Batch variation
+	tauJ ~ dgamma(0.001, 0.001) # Between Sample variation
+	tauK ~ dgamma(0.001, 0.001) # Between Test variation
+	
+	sigma2I <- 1 / tauI
+	sigma2J <- 1 / tauJ
+	sigma2K <- 1 / tauK
+	
+	denom <- sigma2I + sigma2J + sigma2K
+	r1 <- sigma2I / denom
+	r2 <- sigma2J / denom
+	r3 <- sigma2K / denom
+}
+
+#INITS
+
+list(
+  theta=0,
+  a = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0),
+	b = structure(
+	      .Data = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	                0,0,0,0,0,0,0,0,0,0,0,0,0,0,0),
+	      .Dim = c(15,2)
+	      ),
+  tauI = 1.0,
+  tauJ = 1.0,
+  tauK = 1.0
+)
+
+# DATA
+
+list(
+  I=15,
+  J=2,
+  K=2,
+	y = structure(
+	      .Data=c(40,39,30,30,
+	              26,28,25,26,
+	              29,28,14,15,
+	              30,31,24,24,
+	              19,20,17,17,
+	              33,32,26,24,
+	              23,24,32,33,
+	              34,34,29,29,
+	              27,27,31,31,
+	              13,16,27,24,
+	              25,23,25,27,
+	              29,29,31,32,
+	              19,20,29,30,
+	              23,23,25,25,
+	              39,37,26,28),
+	      .Dim=c(15,2,2)
+	      )
+)
+```
+
+```{r}
+#define the model
+library(R2OpenBUGS)
+pigmentmodel <- function(){
+	for( i in 1 : I ) {
+		a[i] ~ dnorm(0.0, tauI)
+		for( j in 1 : J ) {
+			b[i , j] ~ dnorm(0.0, tauJ)
+			for( k in 1 : K ) {
+				e[i , j , k] <- theta + a[i] + b[i , j]
+				y[i , j , k] ~ dnorm(e[i , j , k], tauK)
+			}
+		}
+	}
+  
+	## Priors
+  
+  theta ~ dflat() # sample mean
+	
+	tauI ~ dgamma(0.001, 0.001) # Between Batch variation
+	tauJ ~ dgamma(0.001, 0.001) # Between Sample variation
+	tauK ~ dgamma(0.001, 0.001) # Between Test variation
+	
+	sigma2I <- 1 / tauI
+	sigma2J <- 1 / tauJ
+	sigma2K <- 1 / tauK
+	
+	sigma2JK <- sigma2J / sigma2K
+	
+	denom <- sigma2I + sigma2J + sigma2K
+	r1 <- sigma2I / denom
+	r2 <- sigma2J / denom
+	r3 <- sigma2K / denom
+}
+# write the model code out to a file
+write.model(pigmentmodel, "dyes2model.txt")
+model.file.pigment = paste(getwd(),"dyes2model.txt", sep="/")
+
+#prepare the data for input into OpenBUGS
+  
+data <- 
+  list(I=15,J=2,K=2,y = structure(
+	      .Data=c(40,39,30,30,
+	              26,28,25,26,
+	              29,28,14,15,
+	              30,31,24,24,
+	              19,20,17,17,
+	              33,32,26,24,
+	              23,24,32,33,
+	              34,34,29,29,
+	              27,27,31,31,
+	              13,16,27,24,
+	              25,23,25,27,
+	              29,29,31,32,
+	              19,20,29,30,
+	              23,23,25,25,
+	              39,37,26,28),
+	      .Dim=c(15,2,2)
+))
+
+#initialization of variables
+inits <- function(){
+  list(
+  theta=0,
+  a = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0),
+	b = structure(
+	      .Data = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	                0,0,0,0,0,0,0,0,0,0,0,0,0,0,0),
+	      .Dim = c(15,2)
+	      ),
+  tauI = 1.0,
+  tauJ = 1.0,
+  tauK = 1.0
+)
+}
+
+WINE="/opt/local/bin/wine"
+WINEPATH="/opt/local/bin/winepath"
+OpenBUGS.pgm=paste0("/Users/benjamin/Applications/wine/",
+                    "drive_c/ProgramFiles/OpenBUGS/OpenBUGS323/OpenBUGS.exe")
+
+#these are the parameters to save
+parameters = c("sigma2I","sigma2J","sigma2K", "sigma2JK", "r1", "r2", "r3")
+
+#run the model
+pigment.sim <- bugs(data, 
+                   inits, 
+                   model.file = model.file.pigment,
+                   parameters=parameters,
+                   n.burnin = 100,
+                   n.chains = 5, 
+                   n.iter = 1000, 
+                   OpenBUGS.pgm=OpenBUGS.pgm, 
+                   WINE=WINE, 
+                   WINEPATH=WINEPATH,
+                   useWINE=T,
+                   codaPkg = F,
+                   debug = F)
+
+```
+
+```{r plot}
+library(ggplot2)
+library(ggtern)
+attach.bugs(pigment.sim)
+
+pigsimlist <- tbl_df(pigment.sim$sims.list)
+
+sig2I <- pigsimlist$sigma2I
+sig2J <- pigsimlist$sigma2J
+sig2K <- pigsimlist$sigma2K
+
+df <- tbl_df(pigsimlist$r1)
+df <- tbl_df(cbind(rBatches = pigsimlist$r1, rSamples = pigsimlist$r2, rTests = pigsimlist$r3))
+
+ggtern(data=df,aes(x=rBatches,z=rSamples,y=rTests)) + 
+  theme_rgbw() +
+  geom_point(size=0.1, colour = "red") +
+  geom_confidence_tern(breaks = c(0.5,0.7,0.9)) + 
+  theme_clockwise() +
+  labs(x="Batches",z="Samples",y="Tests",title="Title")
+
+```
+
+```{r coda, eval = FALSE}
+library(coda)
+library(lattice)
+out.coda <- read.bugs(pigment.sim)
+plot(out.coda)
+HPDinterval(out.coda)
+densityplot(out.coda)
+batchSE(out.coda)
+(out.summary <- summary(out.coda, q=c(0.025, 0.975)))
+
+attach.bugs(pigment.sim)
+
+# sigma2_with_stat <- c(out.summary$statistics[2,1],
+# out.summary$q["sigma2.btw",])
+# sigma2_btw_stat <- c(out.summary$statistics[3,1],
+# out.summary$q["sigma2.with",])
+# 
+# summary_stats <- rbind(sigma2.with = sigma2_with_stat,sigma2.btw = sigma2_btw_stat)
+# colnames(summary_stats)[1] <- "Mean"
+# summary_stats
 ```
 

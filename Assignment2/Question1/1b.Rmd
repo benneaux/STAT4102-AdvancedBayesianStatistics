@@ -5,4 +5,93 @@ output: html_notebook
 
  (b) Assuming Gamma(a,b) priors for two Poisson parameters $\lambda_1$ and $\lambda_2$, derive the posterior for $\phi = \lambda_1 / \lambda_2$. (Hint: use nuisance parameter $\mu = \lambda_2$).
   
-  For 
+Firstly, the likelihood function for two Poissons is: 
+$$
+p(x_1, x_2 | \lambda_1, \lambda_2) = p(x_1|\lambda_1)p(x_2|\lambda_2) = \frac{e^{-\lambda_1}\lambda_1^{x_1}}{x_1!} \cdot \frac{e^{-\lambda_2}\lambda_2^{x_2}}{x_2!}.
+$$
+Reparameterising by $\phi = \frac{\lambda_1}{\lambda_2}$, we get:  
+$$
+p(x_1, x_2 | \phi, \lambda_2) = \frac{e^{-\phi \lambda_2}(\phi \lambda_2)^{x_1}}{x_1!} \cdot \frac{e^{-\lambda_2}\lambda_2^{x_2}}{x_2!}.
+$$
+We then compute the Fisher Information Matrix:
+
+$$
+\begin{aligned}
+I(\theta)_{ij} &= E\left(-\frac{\partial^2l}{\partial \theta_i \partial \theta_j}\right) \\
+\implies F(\phi, \lambda_2) &= 
+\begin{bmatrix}
+\frac{\lambda_2}{\phi} & 1 \\
+1 & \frac{1 + \phi}{\lambda_2}
+\end{bmatrix} \\
+\implies S(\phi, \lambda_2) = F^{-1}(\phi, \lambda_2) &= \begin{bmatrix}
+\frac{\phi(1 + \phi)}{\lambda_2} & -\phi \\
+-\phi & \lambda_2
+\end{bmatrix}
+\end{aligned}
+$$
+
+Following the algorithm laid out by Barnardo we can define the marginal and conditional asympototic posteriors for $\phi$.
+
+$$
+\begin{aligned}
+d_0(\phi, \lambda_2) &= \left[\frac{\phi(1 + \phi)}{\lambda_2}\right]^{1/2} \\
+d_1(\phi, \lambda_2) &= \left(\frac{\lambda_2}{1 + \phi}\right)^{1/2}
+\end{aligned}
+$$
+
+According to Corollary 1 of Proposition 2 in Barnardo's paper, because the nuisance parameter space $\Lambda(\phi) =\Lambda$ is independent of $\phi$, we can factorise the above equations as
+$$
+\begin{aligned}
+d_0^{-1}(\phi, \lambda_2) &= \frac{1}{\sqrt{\phi(1 + \phi)}}\cdot \sqrt{\lambda_2} = a_0(\phi)b_0(\lambda_2) \\
+d_1^{-1}(\phi, \lambda_2) &= \sqrt{\phi(1 + \phi)}\cdot \frac{1}{\sqrt{\lambda_2}} = a_1(\phi)b_1(\lambda_2)
+\end{aligned}
+$$
+which implies that the marginal and conditional reference priors are
+
+$$
+\begin{aligned}
+\pi(\phi) \propto a_0(\phi) &= \frac{1}{\sqrt{\phi(1 + \phi)}} \\
+\pi(\lambda|\phi) \propto b_1(\lambda_2) &= \frac{1}{\sqrt{\lambda_2}}
+\end{aligned}
+$$
+
+The joint posterior can be derived with the likelihood and joint prior $(d_1^{-1}(\phi, \lambda_2))$ previously derived.
+
+$$
+\begin{aligned}
+\pi(\phi,\lambda_2|x_1, x_2) &\propto \pi(x_1,x_2|\phi, \lambda_2)\cdot\pi(\phi,\lambda_2) \\
+&\propto e^{-(\phi + 1)\lambda_2}\cdot \phi^{x_1-1/2}\left( 1 + \phi \right)^{1/2} \cdot \lambda_2^{x_1 + x_2 - 1/2}
+\end{aligned}
+$$
+
+which, I'm pretty sure, can be factored as 
+
+$$
+\pi(\phi,\lambda_2|x_1, x_2) \propto Gamma(\lambda_2|x_1 + 1/2,1)\cdot Gamma\left(\phi|x_1, \frac{1}{\lambda_2}\right)\cdot Beta\left(\frac{\phi}{1 + \phi}|3/2,1 \right).
+$$
+
+Now, we can combine the two to derive the joint reference prior.
+
+$$
+\pi(\phi, \lambda_2) = \pi(\phi)\pi(\lambda_2|\phi) = \frac{1}{\sqrt{\phi(1 + \phi)}}\cdot\frac{1}{\sqrt{\lambda_2}}
+$$
+Finally, now that we have the marginal reference prior for $\phi$, we can calculate the marginal posterior of $\phi$ be integrating out the nuisance parameter $\lambda_2$.
+$$
+\begin{aligned}
+\pi(\phi|x_1,x_2) &= \pi(\phi) \int_{\Lambda(\phi)}p(x_1,x_2|\phi, \lambda_2)\pi(\lambda_2|\phi)d\lambda_2 \\
+&= \pi(\phi) \int_{\Lambda} \frac{e^{-\phi \lambda_2}(\phi \lambda_2)^{x_1}}{x_1!} \cdot \frac{e^{-\lambda_2}\lambda_2^{x_2}}{x_2!}\cdot\frac{1}{\sqrt{\lambda_2}} d\lambda_2 \\
+&\propto \frac{1}{\sqrt{\phi(1 + \phi)}} \int_{\Lambda} e^{-(\phi+1)\lambda_2}\phi^{x_1} \cdot \frac{\lambda_2^{x_1 + x_2}}{\sqrt{\lambda_2}} d\lambda_2 \\
+&\propto \frac{\phi^{x_1}}{\sqrt{\phi(1 + \phi)}} \int_{\Lambda} e^{-(\phi+1)\lambda_2} \cdot \frac{\lambda_2^{x_1 + x_2}}{\sqrt{\lambda_2}} d\lambda_2
+\end{aligned}
+$$
+
+Here we solve the integral
+
+$$
+\int_{\Lambda} e^{-(\phi+1)\lambda_2} \cdot \frac{\lambda_2^{x_1 + x_2}}{\sqrt{\lambda_2}} d\lambda_2 = \frac{\Gamma(x_1 + x_2 - 1/2)}{(1+\phi)^{(x_1 + x_2 - 1/2)}}
+$$
+
+which leaves (I think)
+$$
+\pi(\phi|x_1,x_2) \propto \frac{\phi^{x_1 - 1/2}}{(1 + \phi)^{(x_1 + x_2 - 1/2)}} 
+$$

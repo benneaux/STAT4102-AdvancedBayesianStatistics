@@ -18,3 +18,5 @@ model
     tau.K ~ dgamma(0.001, 0.001)
     theta ~ dflat()
 }
+
+

@@ -1,16 +1,17 @@
 model
 {
     for (i in 1:I) {
-        a[i] ~ dnorm(0.00000E+00, tauI)
+        a[i] ~ dnorm(theta, tauI)
         for (j in 1:J) {
-            b[i, j] ~ dnorm(0.00000E+00, tauJ)
+            b[i, j] ~ dnorm(a[i], tauJ)
             for (k in 1:K) {
-                e[i, j, k] <- theta + a[i] + b[i, j]
+                e[i, j, k] <- mu0 + a[i] + b[i, j]
                 y[i, j, k] ~ dnorm(e[i, j, k], tauK)
             }
         }
     }
-    theta ~ dflat()
+    theta ~ dnorm(0.00000E+00, 1.00000E-04)
+    mu0 ~ dnorm(0.00000E+00, 1.00000E-04)
     tauI ~ dgamma(0.001, 0.001)
     tauJ ~ dgamma(0.001, 0.001)
     tauK ~ dgamma(0.001, 0.001)

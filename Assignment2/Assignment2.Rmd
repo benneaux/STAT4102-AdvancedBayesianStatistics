@@ -47,35 +47,83 @@ p(z|X) &= \int\limits_0^\infty p(z|\lambda)p(\lambda | X)d\lambda \\
 &= \frac{\Gamma(z + \sum x_i + \alpha)}{\Gamma(\sum x_i + \alpha)\Gamma(z + 1)} \left( \frac{n + \beta}{n + \beta + 1} \right)^{\sum x_i + \alpha} \left(\frac{1}{n + \beta + 1} \right)^{z}
 \end{aligned}$$
 
-```{r Question1a1, echo = TRUE}
-
-# Gelman, q. 13 page 69-70
-# Poisson with gamma prior
-deaths <- c(734,516,754,877,814,362,764,809,223,1066)
-lambda.range <- seq(0,3000)
-# prior
-prior <- dgamma(lambda.range, shape=7, scale=1/.01)
-# log likelihood (likelihood values are too large)
-log.likelihood <- sum(deaths)*log(lambda.range)-length(deaths)*lambda.range
-# posterior
-alpha.star <- 7+sum(deaths)
-beta.star <- .01+length(deaths)
-post <- dgamma(lambda.range, shape=alpha.star, scale=1/beta.star)
-plot(lambda.range, prior, type = "l", lwd = 1.5, xlab = expression(lambda),
-ylab = "Density", cex.axis = 1.3, cex.lab = 1.3, bty = "L", ylim = c(0,0.05))
-lines(lambda.range, post)
-par(new = TRUE)
-plot(lambda.range, log.likelihood, type = "l", lty = 2, lwd = 1.5,
-axes = FALSE, xlab = "", ylab = "")
-axis(side = 4, cex.axis = 1.3)
-```
+\
   (b) Assuming Gamma(a,b) priors for two Poisson parameters $\lambda_1$ and $\lambda_2$, derive the posterior for $\phi = \lambda_1 / \lambda_2$. (Hint: use nuisance parameter $\mu = \lambda_2$).
   
-  For 
+  (b) Assuming Gamma(a,b) priors for two Poisson parameters $\lambda_1$ and $\lambda_2$, derive the posterior for $\phi = \lambda_1 / \lambda_2$. (Hint: use nuisance parameter $\mu = \lambda_2$).
+  
+Firstly, the likelihood function for two Poissons is: 
+$$
+p(x_1, x_2 | \lambda_1, \lambda_2) = p(x_1|\lambda_1)p(x_2|\lambda_2) = \frac{e^{-\lambda_1}\lambda_1^{x_1}}{x_1!} \cdot \frac{e^{-\lambda_2}\lambda_2^{x_2}}{x_2!}.
+$$
+Reparameterising by $\phi = \frac{\lambda_1}{\lambda_2}$, we get:  
+$$
+p(x_1, x_2 | \phi, \lambda_2) = \frac{e^{-\phi \lambda_2}(\phi \lambda_2)^{x_1}}{x_1!} \cdot \frac{e^{-\lambda_2}\lambda_2^{x_2}}{x_2!}.
+$$
+We then compute the Fisher Information Matrix:
 
-```{r Question1bData, echo = TRUE, cache = TRUE}
-```
-(c) Derive the Jeffreys prior for $(\phi, \mu)$, and the corresponding marginal posterior for $\phi$. 
+$$
+\begin{aligned}
+I(\theta)_{ij} &= E\left(-\frac{\partial^2l}{\partial \theta_i \partial \theta_j}\right) \\
+\implies F(\phi, \lambda_2) &= 
+\begin{bmatrix}
+\frac{\lambda_2}{\phi} & 1 \\
+1 & \frac{1 + \phi}{\lambda_2}
+\end{bmatrix} \\
+\implies S(\phi, \lambda_2) = F^{-1}(\phi, \lambda_2) &= \begin{bmatrix}
+\frac{\phi(1 + \phi)}{\lambda_2} & -\phi \\
+-\phi & \lambda_2
+\end{bmatrix}
+\end{aligned}
+$$
+
+Following the algorithm laid out by Barnardo we can define the marginal and conditional asympototic posteriors for $\phi$.
+
+$$
+\begin{aligned}
+d_0(\phi, \lambda_2) &= \left[\frac{\phi(1 + \phi)}{\lambda_2}\right]^{1/2} \\
+d_1(\phi, \lambda_2) &= \left(\frac{\lambda_2}{1 + \phi}\right)^{1/2}
+\end{aligned}
+$$
+
+According to Corollary 1 of Proposition 2 in Barnardo's paper, because the nuisance parameter space $\Lambda(\phi) =\Lambda$ is independent of $\phi$, we can factorise the above equations as
+$$
+\begin{aligned}
+d_0^{-1}(\phi, \lambda_2) &= \frac{1}{\sqrt{\phi(1 + \phi)}}\cdot \sqrt{\lambda_2} = a_0(\phi)b_0(\lambda_2) \\
+d_1^{-1}(\phi, \lambda_2) &= \sqrt{\phi(1 + \phi)}\cdot \frac{1}{\sqrt{\lambda_2}} = a_1(\phi)b_1(\lambda_2)
+\end{aligned}
+$$
+which implies that the marginal and conditional reference priors are
+
+$$
+\begin{aligned}
+\pi(\phi) \propto a_0(\phi) &= \frac{1}{\sqrt{\phi(1 + \phi)}} \\
+\pi(\lambda|\phi) \propto b_1(\lambda_2) &= \frac{1}{\sqrt{\lambda_2}}
+\end{aligned}
+$$
+
+The joint posterior can be derived with the likelihood and joint prior $(d_1^{-1}(\phi, \lambda_2))$ previously derived.
+
+$$
+\begin{aligned}
+\pi(\phi,\lambda_2|x_1, x_2) &\propto \pi(x_1,x_2|\phi, \lambda_2)\cdot\pi(\phi,\lambda_2) \\
+&\propto e^{-(\phi + 1)\lambda_2}\cdot \phi^{x_1-1/2}\left( 1 + \phi \right)^{1/2} \cdot \lambda_2^{x_1 + x_2 - 1/2}
+\end{aligned}
+$$
+
+which, I'm pretty sure, can be factored as 
+
+$$
+\pi(\phi,\lambda_2|x_1, x_2) \propto Gamma(\lambda_2|x_1 + 1/2,1)\cdot Gamma\left(\phi|x_1, \frac{1}{\lambda_2}\right)\cdot Beta\left(\frac{\phi}{1 + \phi}|3/2,1 \right).
+$$
+
+(c) Derive the Jeffreys prior for $(\phi, \mu)$, and the corresponding marginal posterior for $\phi$.
+
+The Jeffreys principle states that the Jeffreys prior is 
+
+$$
+\pi_\phi(\phi) \propto det(I(\phi))^{1/2} = \left(\frac{\lambda_2(1+\phi)}{\phi} - 1\right)^{-1/2} = \phi^{-1/2}
+$$
 
 ```{r Question1cData, echo = TRUE, cache = TRUE}
 ```

@@ -50,7 +50,6 @@ p(z|X) &= \int\limits_0^\infty p(z|\lambda)p(\lambda | X)d\lambda \\
 \
   (b) Assuming Gamma(a,b) priors for two Poisson parameters $\lambda_1$ and $\lambda_2$, derive the posterior for $\phi = \lambda_1 / \lambda_2$. (Hint: use nuisance parameter $\mu = \lambda_2$).
   
-  (b) Assuming Gamma(a,b) priors for two Poisson parameters $\lambda_1$ and $\lambda_2$, derive the posterior for $\phi = \lambda_1 / \lambda_2$. (Hint: use nuisance parameter $\mu = \lambda_2$).
   
 Firstly, the likelihood function for two Poissons is: 
 $$
@@ -77,7 +76,7 @@ I(\theta)_{ij} &= E\left(-\frac{\partial^2l}{\partial \theta_i \partial \theta_j
 \end{aligned}
 $$
 
-Following the algorithm laid out by Barnardo we can define the marginal and conditional asympototic posteriors for $\phi$.
+Following the algorithm laid out by Bernardo we can define the marginal and conditional asympototic posteriors for $\phi$.
 
 $$
 \begin{aligned}
@@ -122,25 +121,82 @@ $$
 The Jeffreys principle states that the Jeffreys prior is 
 
 $$
-\pi_\phi(\phi) \propto det(I(\phi))^{1/2} = \left(\frac{\lambda_2(1+\phi)}{\phi} - 1\right)^{-1/2} = \phi^{-1/2}
+\pi_\phi(\phi) \propto det(I(\phi))^{1/2} = \left(\frac{\lambda_2(1+\phi)}{\lambda_2\phi} - 1\right)^{1/2} = \phi^{-1/2}
 $$
 
-```{r Question1cData, echo = TRUE, cache = TRUE}
-```
+The marginal posterior can be derived by multiplyin the likelihood by the Jeffrey's prior and then integrating out the nuissance parameter:
+
+$$
+\begin{aligned}
+\pi(\phi|x_1,x_2) &\propto  \int_{0}^\infty \frac{e^{-\phi \lambda_2}(\phi \lambda_2)^{x_1}}{x_1!} \cdot \frac{e^{-\lambda_2}\lambda_2^{x_2}}{x_2!}\cdot\frac{1}{\sqrt{\phi}} \quad d\lambda_2 \\
+&\propto \phi^{x_1 -1/2} \int_{0}^\infty e^{-(\phi+1)\lambda_2} \cdot \lambda_2^{x_1 + x_2}\quad  d\lambda_2
+\end{aligned}
+$$
+Here we solve the integral:
+
+$$
+\int_{0}^\infty e^{-(\phi+1)\lambda_2} \cdot \lambda_2^{x_1 + x_2}\quad  d\lambda_2 = (\phi + 1)^{-(x_1 + x_2 + 1)}\cdot \Gamma(x_1 + x_2 + 1)
+$$
+which leads us to
+
+$$
+\begin{aligned}
+\pi(\phi|x_1,x_2) &\propto \phi^{x_1 -1/2} (\phi + 1)^{-(x_1 + x_2 + 1)}\cdot \Gamma(x_1 + x_2 + 1) \\
+&\propto \frac{\phi^{x_1 -1/2}}{(\phi + 1)^{-(x_1 + x_2 + 1)}}
+\end{aligned}
+$$
 
 (d) Derive the reference prior for $(\phi, \mu)$, and the corresponding marginal posterior for $\phi$. 
 
-```{r Question1d}
-```
+We can combine the marginal and conditional refererence priors derived above to determine the joint reference prior.
 
-(e) Based on (c), consider the posterior for $\phi$ based on uniform priors for $\lambda_1$ and $\lambda_2$, and comment on when inference based on this posterior could be quite different from that based on the reference posterior from (e). Give a data example, in terms of resulting intervals. (Hint: the above posteriors are related to known pdfs, and by transformation may be simplified even further.).
+$$
+\pi(\phi, \lambda_2) = \pi(\phi)\pi(\lambda_2|\phi) = \frac{1}{\sqrt{\phi(1 + \phi)}}\cdot\frac{1}{\sqrt{\lambda_2}}
+$$
+Now that we have the marginal reference prior for $\phi$, Bernardo states that we can calculate the marginal posterior of $\phi$ by integrating out the nuisance parameter $\lambda_2$.
+$$
+\begin{aligned}
+\pi(\phi|x_1,x_2) &= \pi(\phi) \int_{\Lambda(\phi)}p(x_1,x_2|\phi, \lambda_2)\pi(\lambda_2|\phi)d\lambda_2 \\
+&= \pi(\phi) \int_{\Lambda} \frac{e^{-\phi \lambda_2}(\phi \lambda_2)^{x_1}}{x_1!} \cdot \frac{e^{-\lambda_2}\lambda_2^{x_2}}{x_2!}\cdot\frac{1}{\sqrt{\lambda_2}} d\lambda_2 \\
+&\propto \frac{1}{\sqrt{\phi(1 + \phi)}} \int_{\Lambda} e^{-(\phi+1)\lambda_2}\phi^{x_1} \cdot \frac{\lambda_2^{x_1 + x_2}}{\sqrt{\lambda_2}} d\lambda_2 \\
+&\propto \frac{\phi^{x_1}}{\sqrt{\phi(1 + \phi)}} \int_{\Lambda} e^{-(\phi+1)\lambda_2} \cdot \frac{\lambda_2^{x_1 + x_2}}{\sqrt{\lambda_2}} d\lambda_2
+\end{aligned}
+$$
 
+Here we solve the integral
 
-```{r Question1e, cache = TRUE, echo = FALSE}
-```
+$$
+\int_{\Lambda} e^{-(\phi+1)\lambda_2} \cdot \frac{\lambda_2^{x_1 + x_2}}{\sqrt{\lambda_2}} d\lambda_2 = \frac{\Gamma(x_1 + x_2 - 1/2)}{(1+\phi)^{(x_1 + x_2 + 1/2)}}
+$$
 
-```{r Question1e2, cache = FALSE, fig.height = 10, fig.width  = 8, dependson = "Question1e"}
-```
+which leaves
+$$
+\pi(\phi|x_1,x_2) \propto \frac{\phi^{x_1 - 1/2}}{(1 + \phi)^{(x_1 + x_2 +1)}} 
+$$
+which is identical to the marginal posterior derived by using the Jeffrey's prior.
+
+(e) Based on (c), consider the posterior for $\phi$ based on uniform priors for $\lambda_1$ and $\lambda_2$, and comment on when inference based on this posterior could be quite different from that based on the reference posterior from (d). Give a data example, in terms of resulting intervals. (Hint: the above posteriors are related to known pdfs, and by transformation may be simplified even further.).
+
+Before I begin, I should note that you deal with a lot of these issues yourself Frank, in \emph{Consensus priors for multinomial and binomial ratios}.
+
+Firstly, the parameter $\phi$ can be regarded as a multinomial ratio, a link established by both yourself -- in \emph{Section 2.3: Straitforward alternative derivations} -- and Bernardo, who uses the transformation $\omega = \frac{phi}{1+phi}$ to arrive at an alternative expression for the marginal posterior density function given above:
+
+$$
+\\pi(\phi|x_1,x_2)| x_1, x_2)\left|\frac{d\phi}{d\omega}\right| = \pi(\omega|x_1,x_2) \propto \omega^{x_1 - 1/2}(1-\omega)^{x_2-1/2} =  Beta(\omega|x_1 + 1/2, x_2 + 1/2)
+$$
+
+Given this is a multinomial case where the Jeffrey's/Reference posterior is given above, you give the Bayes posterior as 
+
+$$
+\pi_B(\phi|x_1,x_2) \propto \frac{\phi^{x_1}}{(1 + \phi)^{(x_1 + x_2 + 2)}}
+$$ 
+which we can derive a similar alternative expression for: 
+
+$$
+\\pi(\phi|x_1,x_2)| x_1, x_2)\left|\frac{d\phi}{d\omega}\right| = \pi(\omega|x_1,x_2) \propto \omega^{x_1}(1-\omega)^{x_2} =  Beta(\omega|x_1 + 1, x_2 + 1)
+$$
+
+As usual, the conditions where the difference between the Bayes and Jeffrey's/Reference marginal posteriors becomes apparent is when $x_1 = 0, x_2 \to n$. The Jeffrey's/Reference posterior will have more weight closer to zero than the BL posterior, which we studied more closely in Assignment 1. Also, we know that in terms of mean coverage, BL $\to 1-\alpha, n\to \infty$, which is not case for J/R. 
 
 \newpage
 
@@ -156,35 +212,47 @@ opts_chunk$set(fig.width = 8, fig.height = 6, fig.align = "center")
 
 (a) Use e.g. SAS (PROC VARCOMP) to perform a classical analysis of the data in Table 5.1.4 of Box & Tiao (1973), based on finding point estimates only.
 
-```{r Question2a, eval = FALSE}
-source("Question2/2setup.R")
+(a) Use e.g. SAS (PROC VARCOMP) to perform a classical analysis of the data in Table 5.1.4 of Box & Tiao (1973), based on finding point estimates only.
+
+I'll be using R. First, let's confirm the results reported by Box & Tiao (1973), using frequentist methods.
+
+```{r anova}
 library(lme4)
 data("Dyestuff2")
-fit <- aov(Yield ~ Batch, data= Dyestuff2) 
-summary(fit)
-coefficients(fit)
-proj(fit, onedf = TRUE)
-library(varComp)
-library(nlme)
-lmef <- lme(Yield ~ 1, Dyestuff2, ~1|Batch)
-summary(lmef)
-vcf <- varComp(Yield ~ Batch, Dyestuff2, )
-summary(vcf)
-VarCorr(lmef)
-coef(vcf, 'varComp')
-logLik(vcf)
-vcf0 = varComp(Yield~Batch, Dyestuff2)
-vcf1 = varComp(Yield~1, Dyestuff2)
-coef(vcf0,"varComp")
-coef(vcf1,"varComp")
-logLik(vcf0)
-
+D2aov <- aov(Yield ~ Batch, Dyestuff2)
+(D2summary <- summary(D2aov))
+(sigma2_with <- D2summary[[1]]$`Mean Sq`[2])
+(sigma2_btw <- (D2summary[[1]]$`Mean Sq`[1] - sigma2_with)/D2summary[[1]]$Df[1])
 ```
+
+These results match what was reported by Box & Tiao (1973). Next, we can attempt to fit a linear model using the REML method.
+
+```{r}
+(D2REML <- lmer(Yield ~ 1 + (1|Batch), Dyestuff2, REML=TRUE))
+D2REML <- broom::tidy(D2REML)
+(sigma2_with <- D2REML[which(D2REML$group == "Residual"),"estimate"]^2)
+(sigma2_btw <- D2REML[which(D2REML$group == "Batch"),"estimate"]^2)
+```
+
+Despite the fact that the result for $\sigma_{btw}$ is reported as $0$, we can observe some slight variation between batches using a dotplot (reordering the Batches to produce a smoother average line).
+
+```{r}
+require(lattice)
+dotplot(reorder(Batch, Yield) ~ Yield, Dyestuff2,
+        ylab = "Batch", jitter.y = TRUE, aspect = 0.3,
+        type = c("p","a"))
+```
+
+As a side note, the creator of the lme4 package that contains the Dyestuff2 data set explains the estimate of $0$ away by saying that \emph{"indicates that the level of
+“between-group” variability is not sufficient to warrant incorporating random
+effects in the model"} -- page 25 here: http://lme4.r-forge.r-project.org/lMMwR/lrgprt.pdf.
+
 (b)  Use WinBUGS for a Bayesian analysis of (a), and find reasonable point and interval estimates for $\sigma_1^2$ and $\sigma_2^2$. Include graphs, including one of the joint posterior. [6 marks] 
+Before we begin, I've relabelled the ICC variable as ICC, instead of rho -- which I had previously -- just to keep things consistent. Also, I found methods for using the ICC method for models with more that two levels but didn't have time to go into them too much: I don't know if they automatically solve the issues we were discussing in class or not, although I assume they would.
+
+I'll be using \textbf{OpenBUGS} and an \textbf{R} package called \textbf{R2OpenBUGS} to run these simulations.
 
 ```{r Question2b, eval=FALSE}
-```
-```{r Q3BUGS, cache=FALSE}
 #define the model
 library(R2OpenBUGS)
 dyesmodel <- function(){
@@ -268,66 +336,100 @@ out.summary$stat["theta",]
 # out.summary$q["theta", ]
 ```
 
-
 (c) Box & Tiao also studied a 3-component model (Table 5.3.1). 
     i. Derive central credible intervals, for the 3 individual components, based on Table 5.3.3.
     ii. Use WinBUGS to do the same, and include graphs.
     iii. While not going as far as Box & Tiao’s Figure 5.3.2, produce a graph of the joint posterior of $\sigma_2^2$ and $\sigma_3^2$, and one of $\sigma_2^2 / \sigma_3^2$
+    
+Here is where my answers started to diverge somewhat more drastically from those reported by Box and Tiao, which I will discuss further on.
 
-```{r Question2c}
-dfI <-  rep(seq(1,10),4)
-dfJ <- c(rep(1,20),rep(2,20))
-dfK <- c(rep(1,10),rep(2,10),rep(1,10),rep(2,10))
-df <- cbind(dfI,dfJ,dfK)
+First, let's confirm the results in the text.
 
-dfJ1K1 <- c(2.004,4.342,0.869,3.531,2.579,-1.404,-1.676,1.670,2.141,-1.229)
-dfJ1K2 <- c(2.713,4.229,-2.621,4.185,4.271,-1.003,-0.208,2.426,3.527,-0.596)
-dfJ2K1 <- c(0.602,3.344,-3.896,1.722,-2.101,-0.755,-9.139,1.834,0.462,4.471)
-dfJ2K2 <- c(0.252,3.057,-3.696,0.380,0.651,-2.202,-8.653,1.200,0.665,1.606)
-df2 <- c(dfJ1K1,dfJ1K2,dfJ2K1,dfJ2K2)
+```{r Q2cAnova}
+df <- readRDS("Question2/Data/Q2c.rds")
+(BT3 <- summary(aov(Sample~(I/J/K),df)))
+(m1 <- BT3[[1]]$`Mean Sq`[3])
+(m2 <- (BT3[[1]]$`Mean Sq`[2]-BT3[[1]]$`Mean Sq`[3])/2)
+(m3 <- (BT3[[1]]$`Mean Sq`[1]-BT3[[1]]$`Mean Sq`[2])/4)
+(mAll <- m1+m2+m3)
+(m1/mAll)
+(m2/mAll)
+(m3/mAll)
+```
 
-df3 <- cbind(df,df2)
-colnames(df3) <- c("I","J","K","Sample")
-df3 <- as.data.frame(df3) %>%
-  mutate(I = as.factor(I)) %>%
-  mutate(J = as.factor(J)) %>%
-  mutate(K = as.factor(K))
+Next, the model for simulating in BUGS.
 
-
+```{r Q2cmodel}
 #define the model
 library(R2OpenBUGS)
-compmodel <- function(){
-  for(i in 1 : I) {
-    m[i] ~ dnorm(theta, tau.a)
-    for(j in 1 : J) {
-      y[i , j] ~ dnorm(m[i], tau.b)
-      for(k in 1 : K) {
-      y[i,j,k] ~ dnorm(y[i,j], tau.c)
-      }
-      }
-    
-  }
-  sigma2.a <- 1 / tau.b
-  sigma2.b <- 1 / tau.b
-  sigma2.c <- 1 / tau.c
-  tau.a ~ dgamma(0.001, 0.001)
-  tau.b ~ dgamma(0.001, 0.001)
-  tau.c ~ dgamma(0.001, 0.001)
-  theta ~ dflat()
+threecompmodel <- function(){
+	for( i in 1 : I ) {
+		a[i] ~ dnorm(theta, tauI)
+		for( j in 1 : J ) {
+			b[i , j] ~ dnorm(a[i], tauJ)
+			for( k in 1 : K ) {
+				e[i , j , k] <- mu0 + a[i] + b[i , j]
+				y[i , j , k] ~ dnorm(e[i , j , k], tauK)
+			}
+		}
+	}
+  
+	## Priors
+  
+  theta ~ dnorm(0.0,1.00E-04) # Batch Mean
+	mu0   ~ dnorm(0.0,1.00E-04) # Sample Mean
+	
+	tauI  ~ dgamma(0.001, 0.001) # Between Batch variation
+	tauJ  ~ dgamma(0.001, 0.001) # Between Sample variation
+	tauK  ~ dgamma(0.001, 0.001) # Between Test variation
+	
+	sigma2I <- 1 / tauI
+	sigma2J <- 1 / tauJ
+	sigma2K <- 1 / tauK
+	
+	sigma2JK <- sigma2J / sigma2K
+	
+	denom <- sigma2I + sigma2J + sigma2K
+	r1 <- sigma2I / denom
+	r2 <- sigma2J / denom
+	r3 <- sigma2K / denom
 }
 # write the model code out to a file
-write.model(compmodel, "comp.txt")
-model.file1 = paste(getwd(),"comp.txt", sep="/")
+write.model(threecompmodel, "threecompmodelmodel.txt")
+model.file.3comp = paste(getwd(),"threecompmodelmodel.txt", sep="/")
 
-y <- tbl_df(df3) %>%
-   spread("J") %>%
-   dplyr::select(-1)
-y <- as.matrix(y)  
-data <- list("I","J","K","Sample")
+#prepare the data for input into OpenBUGS
+  
+data <- 
+  list(I=10,J=2,K=2,y = structure(
+	      .Data=c(2.004,  2.713,  0.602,  0.252,
+                4.342,  4.229,  3.344,  3.057,
+                0.869, -2.621, -3.896, -3.696,
+                3.531,  4.185,  1.722,  0.380,
+                2.579,  4.271, -2.101,  0.651,
+               -1.404, -1.003, -0.755, -2.202,
+               -1.676, -0.208, -9.139, -8.653,
+                1.670,  2.426,  1.834,  1.200,
+                2.141,  3.527,  0.462,  0.665,
+               -1.229, -0.596,  4.471,  1.606),
+	      .Dim=c(10,2,2)
+))
 
 #initialization of variables
 inits <- function(){
-  list(theta=1, tau.a=1, tau.b=1,tau.c=1)
+  list(
+    mu0 = 0,
+  theta=0,
+  a = c(0,0,0,0,0,0,0,0,0,0),
+	b = structure(
+	      .Data = c(0,0,0,0,0,0,0,0,0,0,
+	                0,0,0,0,0,0,0,0,0,0),
+	      .Dim = c(10,2)
+	      ),
+  tauI = 1.0,
+  tauJ = 1.0,
+  tauK = 1.0
+)
 }
 
 WINE="/opt/local/bin/wine"
@@ -336,125 +438,180 @@ OpenBUGS.pgm=paste0("/Users/benjamin/Applications/wine/",
                     "drive_c/ProgramFiles/OpenBUGS/OpenBUGS323/OpenBUGS.exe")
 
 #these are the parameters to save
-parameters = c("sigma2.a","sigma2.b","sigma2.c","theta")
+parameters = c("sigma2I","sigma2J","sigma2K", "sigma2JK", "r1", "r2", "r3")
 
 #run the model
-comp.sim <- bugs(data, 
-                 inits, 
-                 model.file = model.file1,
-                 parameters=parameters,
-                 n.burnin = 2000,
-                 n.chains = 5, 
-                 n.iter = 15000, 
-                 OpenBUGS.pgm=OpenBUGS.pgm, 
-                 WINE=WINE, 
-                 WINEPATH=WINEPATH,
-                 useWINE=T,
-                 codaPkg = T,
-                 debug = F)
-# print(dyes.sim)
-# dyes.sim$summary
+threecomp.sim <- bugs(data, 
+                   inits, 
+                   model.file = model.file.3comp,
+                   parameters=parameters,
+                   n.burnin = 5000,
+                   n.chains = 5, 
+                   n.iter = 50000, 
+                   OpenBUGS.pgm=OpenBUGS.pgm, 
+                   WINE=WINE, 
+                   WINEPATH=WINEPATH,
+                   useWINE=T,
+                   codaPkg = F,
+                   debug = F)
 
-out.coda <- read.bugs(comp.sim)
-library(coda)
-library(lattice)
-plot(out.coda)
-HPDinterval(out.coda)
-batchSE(out.coda)
-densityplot(out.coda)
-acfplot(out.coda)
-gelman.diag(out.coda)
-gelman.plot(out.coda)
-out.summary <- summary(out.coda, q=c(0.025, 0.975))
-out.summary
-out.summary$stat["sigma2.a",]
-# out.summary$q["sigma2.with", ]
-out.summary$stat["sigma2.b",]
-out.summary$stat["sigma2.c",]
-# out.summary$q["sigma2.btw", ]
-out.summary$stat["theta",]
-# out.summary$q["theta", ]
-
-
-
-# 
-# 
-# library(lme4)
-# library(varComp)
-# library(nlme)
-# lme(distance ~ age, data = Orthodont)
-# lmef <- lme(Sample ~ 1, data = df3, ~1|I/J/K)
-# summary(lmef)
-# vcf <- varComp(Sample~K, df3,~I/J)
-# summary(vcf)
-# coef(vcf, 'varComp')
-# k0=tcrossprod(model.matrix(~0+I,df3))
-# k1=tcrossprod(df3$J==1)*k0
-# k2=tcrossprod(df3$J==2)*k0
-# k3=tcrossprod(model.matrix(~0+I:K, df3))
-# ## unequal variance across Source for Lot effects, in a preferred parameterization:
-# (vcf1 = varComp(Sample~1, df3, varcov=list(S1Lot=k1, S2Lot=k2, S3Lot=k3))) 
-# ## unequal variance across Source for Lot effects, in a different parameterization:
-# (vcf2 = varComp(Sample~J, df3, varcov=list(Lot=k0, S2Lot=k2, `Lot:K`=k3)))
-# ## unequal variance across Source for Lot effects, but in a poor parameterization that 
-# ##   turns out to be the same as vcf after fitting.
-# (vcf3 = varComp(Sample~J, df3, varcov=list(Lot=k0, S1Lot=k1, `Lot:K`=k3)))  
-# logLik(vcf)
-# logLik(vcf1)
-# logLik(vcf2)  ## the same as vcf1
-# logLik(vcf3)  ## the same as vcf
-# 
-# 
-# vcf0 = varComp(Sample~I, df3)
-# vcf1 = varComp(Yield~Batch, Dyestuff2, ~Yield/Batch)
-# summary(vcf0)
-# vcf1
-# logLik(vcf0)
-# library(hglm)
-# m11 <- hglm(fixed = Sample ~ 1 +J + K,
-#             random = ~ 1|I,
-#             rand.family = gaussian(link = "identity"),
-#             disp = ~ J + K,
-#             data = df3)
-# summary(m11)
-# print(summary(m11), print.ranef = TRUE)
 ```
 
+```{r Q2cplot}
+library(ggplot2)
+library(ggtern)
+attach.bugs(threecomp.sim)
+
+threecompsimlist <- tbl_df(threecomp.sim$sims.list)
+
+# densityplot(threecompsimlist$sigma2I)
+# densityplot(threecompsimlist$sigma2J)
+# densityplot(threecompsimlist$sigma2K)
+
+# sig2I <- threecompsimlist$sigma2I
+# sig2J <- threecompsimlist$sigma2J
+# sig2K <- threecompsimlist$sigma2K
+
+df <- tbl_df(threecompsimlist$r1)
+df <- tbl_df(cbind(rBatches = threecompsimlist$sigma2I, rSamples = threecompsimlist$sigma2J, rTests = threecompsimlist$sigma2K))
+denom <- sum(threecomp.sim$summary[1:3,1])
+
+rI <- threecomp.sim$summary[1,1]/denom
+rJ <- threecomp.sim$summary[2,1]/denom
+rK <- threecomp.sim$summary[3,1]/denom
+
+ggtern(data = df, aes(x=rBatches,z=rSamples,y=rTests)) + 
+  theme_rgbw() +
+  geom_point(size=0.1, colour = "red") +
+  geom_confidence_tern(breaks = c(0.95)) + 
+  theme_clockwise() +
+  labs(x="Batches",z="Samples",y="Tests",title="Contours of the posterior distribution of (r1, r2, r3)")
+
+```
 
 (d) Box, Hunter & Hunter (1976, Chapter 17.3) studied a pigment paste example with three components, focusing on point estimates only. Use WinBUGS again to perform a Bayesian analysis. Include graphs.
 
-```{r Question2d}
-### Oxide/Semiconductor data example
-library(nlme)
-data(Oxide)
-lmef = lme(Thickness~Source, Oxide, ~1|Lot/Wafer)
-vcf = varComp(Thickness~Source, Oxide, ~Lot/Wafer)
-VarCorr(lmef)
-coef(vcf, 'varComp') ## same values as above
-k0=tcrossprod(model.matrix(~0+Lot,Oxide))
-k1=tcrossprod(Oxide$Source==1)*k0
-k2=tcrossprod(Oxide$Source==2)*k0
-k3=tcrossprod(model.matrix(~0+Lot:Wafer, Oxide))
-## unequal variance across Source for Lot effects, in a preferred parameterization:
-(vcf1 = varComp(Thickness~Source, Oxide, varcov=list(S1Lot=k1, S2Lot=k2, `Lot:Wafer`=k3))) 
-## unequal variance across Source for Lot effects, in a different parameterization:
-(vcf2 = varComp(Thickness~Source, Oxide, varcov=list(Lot=k0, S2Lot=k2, `Lot:Wafer`=k3)))
-## unequal variance across Source for Lot effects, but in a poor parameterization that 
-##   turns out to be the same as vcf after fitting.
-(vcf3 = varComp(Thickness~Source, Oxide, varcov=list(Lot=k0, S1Lot=k1, `Lot:Wafer`=k3)))  
-logLik(vcf)
-logLik(vcf1)
-logLik(vcf2)  ## the same as vcf1
-logLik(vcf3)  ## the same as vcf
-## fixef-effect only
-vcf0 = varComp(Thickness~Source, Oxide)
-summary(vcf0)
-summary(lmf<-lm(Thickness~Source, Oxide))
-vcf00 = varComp(Thickness~0, Oxide)
-summary(vcf00)
-summary(lmf0<-lm(Thickness~0, Oxide))
+Again, any issues that are present in the model above will be reproduced here.
 
+```{r Q2dmodel}
+#define the model
+library(R2OpenBUGS)
+pigmentmodel <- function(){
+	for( i in 1 : I ) {
+		a[i] ~ dnorm(0.0, tauI)
+		for( j in 1 : J ) {
+			b[i , j] ~ dnorm(0.0, tauJ)
+			for( k in 1 : K ) {
+				e[i , j , k] <- theta + a[i] + b[i , j]
+				y[i , j , k] ~ dnorm(e[i , j , k], tauK)
+			}
+		}
+	}
+  
+	## Priors
+  
+  theta ~ dflat() # sample mean
+	
+	tauI ~ dgamma(0.001, 0.001) # Between Batch variation
+	tauJ ~ dgamma(0.001, 0.001) # Between Sample variation
+	tauK ~ dgamma(0.001, 0.001) # Between Test variation
+	
+	sigma2I <- 1 / tauI
+	sigma2J <- 1 / tauJ
+	sigma2K <- 1 / tauK
+	
+	sigma2JK <- sigma2J / sigma2K
+	
+	denom <- sigma2I + sigma2J + sigma2K
+	r1 <- sigma2I / denom
+	r2 <- sigma2J / denom
+	r3 <- sigma2K / denom
+}
+# write the model code out to a file
+write.model(pigmentmodel, "dyes2model.txt")
+model.file.pigment = paste(getwd(),"dyes2model.txt", sep="/")
+
+#prepare the data for input into OpenBUGS
+  
+data <- 
+  list(I=15,J=2,K=2,y = structure(
+	      .Data=c(40,39,30,30,
+	              26,28,25,26,
+	              29,28,14,15,
+	              30,31,24,24,
+	              19,20,17,17,
+	              33,32,26,24,
+	              23,24,32,33,
+	              34,34,29,29,
+	              27,27,31,31,
+	              13,16,27,24,
+	              25,23,25,27,
+	              29,29,31,32,
+	              19,20,29,30,
+	              23,23,25,25,
+	              39,37,26,28),
+	      .Dim=c(15,2,2)
+))
+
+#initialization of variables
+inits <- function(){
+  list(
+  theta=0,
+  a = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0),
+	b = structure(
+	      .Data = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	                0,0,0,0,0,0,0,0,0,0,0,0,0,0,0),
+	      .Dim = c(15,2)
+	      ),
+  tauI = 1.0,
+  tauJ = 1.0,
+  tauK = 1.0
+)
+}
+
+WINE="/opt/local/bin/wine"
+WINEPATH="/opt/local/bin/winepath"
+OpenBUGS.pgm=paste0("/Users/benjamin/Applications/wine/",
+                    "drive_c/ProgramFiles/OpenBUGS/OpenBUGS323/OpenBUGS.exe")
+
+#these are the parameters to save
+parameters = c("sigma2I","sigma2J","sigma2K", "sigma2JK", "r1", "r2", "r3")
+
+#run the model
+pigment.sim <- bugs(data, 
+                   inits, 
+                   model.file = model.file.pigment,
+                   parameters=parameters,
+                   n.burnin = 100,
+                   n.chains = 5, 
+                   n.iter = 1000, 
+                   OpenBUGS.pgm=OpenBUGS.pgm, 
+                   WINE=WINE, 
+                   WINEPATH=WINEPATH,
+                   useWINE=T,
+                   codaPkg = F,
+                   debug = F)
 
 ```
 
+```{r Q2dplot}
+library(ggplot2)
+library(ggtern)
+attach.bugs(pigment.sim)
 
+pigsimlist <- tbl_df(pigment.sim$sims.list)
+
+sig2I <- pigsimlist$sigma2I
+sig2J <- pigsimlist$sigma2J
+sig2K <- pigsimlist$sigma2K
+
+df <- tbl_df(pigsimlist$r1)
+df <- tbl_df(cbind(rBatches = pigsimlist$r1, rSamples = pigsimlist$r2, rTests = pigsimlist$r3))
+
+ggtern(data=df,aes(x=rBatches,z=rSamples,y=rTests)) + 
+  theme_rgbw() +
+  geom_point(size=0.1, colour = "red") +
+  geom_confidence_tern(breaks = c(0.5,0.7,0.9)) + 
+  theme_clockwise() +
+  labs(x="Batches",z="Samples",y="Tests",title="Title")
+```

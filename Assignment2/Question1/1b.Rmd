@@ -30,7 +30,7 @@ I(\theta)_{ij} &= E\left(-\frac{\partial^2l}{\partial \theta_i \partial \theta_j
 \end{aligned}
 $$
 
-Following the algorithm laid out by Barnardo we can define the marginal and conditional asympototic posteriors for $\phi$.
+Following the algorithm laid out by Bernardo we can define the marginal and conditional asympototic posteriors for $\phi$.
 
 $$
 \begin{aligned}

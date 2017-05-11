@@ -33,12 +33,15 @@ df3 <- as.data.frame(df3) %>%
   mutate(J = as.factor(J)) %>%
   mutate(K = as.factor(K))
 rm(df,dfI,dfJ,dfK,df2,dfJ1K1,dfJ1K2,dfJ2K1,dfJ2K2)
+
+saveRDS(df3, "Data/Q2c.rds")
 ```
 
 (b)  Use WinBUGS for a Bayesian analysis of (a), and find reasonable point and interval estimates for $\sigma_1^2$ and $\sigma_2^2$. Include graphs, including one of the joint posterior. [6 marks] 
 
 ```{r}
-(BT3 <- summary(aov(Sample~(I/J/K),df3)))
+df <- readRDS("Data/Q2c.rds")
+(BT3 <- summary(aov(Sample~(I/J/K),df)))
 (m1 <- BT3[[1]]$`Mean Sq`[3])
 (m2 <- (BT3[[1]]$`Mean Sq`[2]-BT3[[1]]$`Mean Sq`[3])/2)
 (m3 <- (BT3[[1]]$`Mean Sq`[1]-BT3[[1]]$`Mean Sq`[2])/4)

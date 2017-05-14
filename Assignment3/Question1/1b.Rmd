@@ -1,0 +1,41 @@
+<!-- model -->
+<!-- { -->
+<!--   for(j in 1 : 59) { -->
+<!--     for(k in 1 : 4) { -->
+<!--       log(mu[j, k]) + aTrt * cTrt[j] -->
+<!--       + aBXT * cBXT[j] -->
+<!--       + aAge * clnAge[j] -->
+<!--       + aV4 * V4[k] -->
+<!--       + u[j] + e[j, k] -->
+<!--       y[j, k] ~ dpois(mu[j, k]) -->
+<!--       e[j, k] ~ dnorm(0.0, taue) -->
+<!--     } -->
+<!--     u[j] ~ dnorm(0.0, tauu) -->
+<!--   } -->
+<!--   # priors: -->
+<!--   a0 ~ dnorm(2.6,1.0) -->
+<!--   aBase ~ dnorm(1.0,1.0) -->
+<!--   aTrt ~ dnorm(0.0,1.0) -->
+<!--   aBXT ~ dnorm(0.0,1.0) -->
+<!--   aAge ~ dnorm(0.0,1.0) -->
+<!--   aV4 ~ dnorm(0.0,1.0) -->
+<!--   tauu ~ dgamma(8.0,2.0) -->
+<!--   taue ~ dgamma(8.0,2.0) -->
+<!-- } -->
+
+
+```{r}
+library(MCMCpack)
+library(coda)
+library(lattice)
+library(Zelig)
+# posterior <- MCMCpoisson(FMD1998 ~., data = FMDData2, burnin = 5000, mcmc = 50000)
+# z5 <- zpoissonbayes$new()
+# z.out <- zelig(FMD1998 ~., model = "poisson.bayes", data = FMDData2)
+# z5$setx()
+# z5$sim()
+# z5$geweke.diag()
+# z5$heidel.diag()
+# z5$raftery.diag()
+# summary(z5)
+```

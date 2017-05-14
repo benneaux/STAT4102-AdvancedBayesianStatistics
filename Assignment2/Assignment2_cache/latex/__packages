@@ -1,8 +1,14 @@
 base
 knitr
-rmarkdown
 dplyr
 lubridate
 ggplot2
+rmarkdown
 tidyr
 ggthemes
+Matrix
+lme4
+ggtern
+lattice
+R2OpenBUGS
+coda

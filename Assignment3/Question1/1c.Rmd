@@ -1,0 +1,66 @@
+<!-- Density function:  -->
+
+<!-- $$ -->
+<!-- f(y\mid\lambda)=\frac{\lambda^{y}e^{-\lambda}}{y!}\\ -->
+<!-- E(Y)=Var(Y)=\lambda -->
+<!-- $$  -->
+
+<!-- where $\lambda$ is the mean. -->
+
+<!-- Likelihood:  -->
+
+<!-- $$ -->
+<!-- \begin{aligned} -->
+<!-- \mathcal{L}(\lambda\mid y) &= \prod\limits_{i=1}^n \dfrac{\lambda^{y_i}e^{-\lambda}}{y_i!} -->
+<!-- \\ &= \dfrac{\lambda^{\sum\limits^n_{i=1}y_i} e^{-n\lambda}}{y_1!y_2! \cdots y_n!} -->
+<!-- \end{aligned} -->
+<!-- $$ -->
+
+<!-- Log-likelihood:  -->
+
+<!-- $$ -->
+<!-- \begin{array}{rcl} -->
+<!-- \mathcal{LL}(\lambda\mid y) &=& \sum\limits^n_{i=1} log(\lambda^{y_i} e^{-\lambda_i}) - log(y_i!) \\  -->
+<!-- \mathcal{LL}(\lambda\mid y)  &=& \sum\limits^n_{i=1} log(\lambda^{y_i}) + log(e^{-\lambda_i})-log(y_i!) \\ -->
+<!-- \mathcal{LL}(\lambda\mid y) &=& \sum\limits^n_{i=1} y_i log(\lambda_i) - \lambda_i - log(y_i!) -->
+<!-- \end{array} -->
+<!-- $$  -->
+```{r}
+#proportion of 0's in the data
+dat.tab<-table(FMDData$FMD1998 == 0)
+dat.tab/sum(dat.tab)
+
+#proportion of 0's expected from a Poisson distribution
+mu <- mean(FMDData$FMD1998)
+cnts <- rpois(1000, mu)
+dat.tab <- table(cnts == 0)
+dat.tab/sum(dat.tab)
+```
+
+```{r}
+# Likelihood:
+model{
+  for(i in 1:n){
+    count[i]       ~ dpois(mu[i])
+    mu[i]          <- u[i]*lambda[i]
+    u[i]           ~ dbern(p[i])
+    logit(p[i])    <- alpha00 + alpha[1, X[i, 1]] + alpha[2, X[i, 2]] + alpha[3, X[i, 3]] + alpha[4, X[i, 4]]
+    log(lambda[i]) <- beta00 + beta[1, X[i, 1]] + beta[2, X[i, 2]] + beta[3, X[i, 3]] + beta[4, X[i, 4]]
+    zdp[i]         <- 1 - p[i] + p[i]*exp(-lambda[i])
+  }
+  mzdp <- mean(zdp[])
+
+  # Priors:
+
+  for(j in 1:4){
+    alpha[j, 1] ~ dnorm(0, 0.001) 
+    alpha[j, 2] <- 0
+    alpha[j, 3] ~ dnorm(0, 0.001)
+    beta[j, 1]  ~ dnorm(0, 0.001) 
+    beta[j, 2]  <- 0
+    beta[j, 3]  ~ dnorm(0, 0.001)
+  }
+  alpha00 ~ dnorm(0, 0.001)
+  beta00  ~ dnorm(0, 0.001)
+}
+```

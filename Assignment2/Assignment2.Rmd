@@ -1,13 +1,17 @@
 ---
 title: "Assignment 2"
 date: "`r Sys.Date()`"
-output:  pdf_document
+output:  
+  pdf_document:
+    dev: png
+geometry: margin=1cm
+
 ---
 
 ```{r DocSetup, include = FALSE}
 require(knitr)
-opts_chunk$set(eval = FALSE, echo = FALSE, warning = FALSE)
-opts_chunk$set(fig.width = 8, fig.height = 6, fig.align = "center")
+opts_chunk$set(warning = FALSE, cache = TRUE)
+opts_chunk$set(fig.height = 3, fig.width = 7,fig.align = "center")
 ```
 
 
@@ -198,13 +202,119 @@ $$
 
 As usual, the conditions where the difference between the Bayes and Jeffrey's/Reference marginal posteriors becomes apparent is when $x_1 = 0, x_2 \to n$. The Jeffrey's/Reference posterior will have more weight closer to zero than the BL posterior, which we studied more closely in Assignment 1. Also, we know that in terms of mean coverage, BL $\to 1-\alpha, n\to \infty$, which is not case for J/R. 
 
+In order to represent the performance of each posterior in the case of $x_n = 0$, I've reused some code from my previous Assignmet.
+
+```{r, echo = FALSE}
+blcover0 <- function(p,x = 0,...) {
+  dens = dbinom(x,n,p)
+  hig = solve.HPD.beta(shape1 = 1, shape2 = n + 1,...)
+  intvals = as.numeric(p <= hig)
+  sum(intvals * dens)
+}
+
+jeffreyscover0 <- function(p,x = 0,...) {
+  dens = dbinom(x,n,p)
+  hig = solve.HPD.beta(shape1 = 0.5, shape2 = n + 0.5,...)
+  intvals = as.numeric(p <= hig)
+  sum(intvals * dens)
+}
+
+
+solve.HPD.beta = function(shape1, shape2, credint = 0.95, one.sided = FALSE,...){
+  if(shape1 <= 1| one.sided == TRUE){
+    lt = 0
+    ut = qbeta(credint, shape1, shape2)
+    coverage = credint
+    results = data_frame("Lower"    = lt,
+                         "Upper"    = ut,
+                         "Coverage" = coverage,
+                         "Height"   = ut)
+    
+    return(c(results[[1]],results[[2]]))
+  }
+  if(shape1 > n){
+    lt = qbeta(1-credint, shape1, shape2)
+    ut = 1
+    coverage = credint
+    results = data_frame("Lower"    = lt,
+                         "Upper"    = ut,
+                         "Coverage" = coverage,
+                         "Height"   = lt)
+    
+    return(c(results[[1]],results[[2]]))
+  } else {
+    hpdfunc <- function(h, shape1, shape2){
+      mode = (shape1 - 1)/(shape1 + shape2 - 2)
+      lt = uniroot(f=function(x){ dbeta(x,shape1, shape2) - h},
+                   lower=0, upper=mode)$root
+      ut = uniroot(f=function(x){ dbeta(x,shape1, shape2) - h},
+                   lower=mode, upper=1)$root
+      coverage = pbeta(ut, shape1, shape2) - pbeta(lt, shape1, shape2)
+      
+      hpdval = abs(credint-coverage)
+      
+      return(hpdval)
+    }
+    upper = max(dbeta(seq(0,1, by = 0.001), shape1, shape2)) 
+    
+    h = optimize(hpdfunc,
+                 interval = seq(0,upper,by = 0.001),
+                 lower = 0,
+                 tol = .Machine$double.eps,
+                 shape1,
+                 shape2)
+    
+    h = h$minimum
+    mode = (shape1 - 1)/(shape1 + shape2 - 2)
+    lt = uniroot(f=function(x){ dbeta(x,shape1, shape2) - h},
+                 lower=0, upper=mode)$root
+    ut = uniroot(f=function(x){ dbeta(x,shape1, shape2) - h},
+                 lower=mode, upper=1)$root
+    coverage = pbeta(ut, shape1, shape2) - pbeta(lt, shape1, shape2)
+    results = data_frame("Lower"    = lt,
+                         "Upper"    = ut,
+                         "Coverage" = coverage,
+                         "Height"   = h)
+    
+    return(c(results[[1]],results[[2]]))
+  }}
+
+ni <- seq(0,100, by = 1)
+p <- seq(0.0001,0.9999,1/1000)
+a <- 0.05
+testdata <- matrix(data = NA, nrow = length(ni),ncol = 3)
+testdata[,1] <- sort(ni)
+for(i in 1:nrow(testdata)){
+  n = testdata[i,1]
+  minvalues = vapply(p,blcover0,0, x = 0, one.sided = TRUE, credint = 1-a)
+  testdata[i,2] = (which.min(minvalues)-1)/1000
+  minvalues = vapply(p,jeffreyscover0, 0, x = 0, one.sided = TRUE, credint = 1-a)
+  testdata[i,3] = (which.min(minvalues)-1)/1000
+}
+df <- tbl_df(testdata)
+ggplot(data = df) +
+  geom_line(aes(x = df$V1,y = df$V2), colour = "blue", group = "BL") +
+  geom_line(aes(x = df$V1,y = df$V3), colour = "red", group = "Jef/Rat") +
+  coord_cartesian(ylim = c(0,1),xlim =  c(0,100)) +
+  labs(x="x_2",y="95% Upper Limit",
+       title="95% HPD Upper Limit of BL (blue) and J/R (red) posteriors")
+```
+
+As we expect, the J/R is waited more towards 0 then the BL.
+
 \newpage
 
 ```{r Q2Setup, include = FALSE}
 rm(list = ls())
 source("Question2/2setup.R")
+library(ggthemes)
+library(lme4)
+library(ggtern)
+require(lattice)
+library(R2OpenBUGS)
 opts_chunk$set(warning = FALSE, echo = TRUE, cache = TRUE)
-opts_chunk$set(fig.width = 8, fig.height = 6, fig.align = "center")
+opts_chunk$set(fig.align = "center")
+options("digits" = 4)
 ```
 
 
@@ -212,13 +322,10 @@ opts_chunk$set(fig.width = 8, fig.height = 6, fig.align = "center")
 
 (a) Use e.g. SAS (PROC VARCOMP) to perform a classical analysis of the data in Table 5.1.4 of Box & Tiao (1973), based on finding point estimates only.
 
-(a) Use e.g. SAS (PROC VARCOMP) to perform a classical analysis of the data in Table 5.1.4 of Box & Tiao (1973), based on finding point estimates only.
-
 I'll be using R. First, let's confirm the results reported by Box & Tiao (1973), using frequentist methods.
 
 ```{r anova}
-library(lme4)
-data("Dyestuff2")
+data("Dyestuff2") #from the lme4 package
 D2aov <- aov(Yield ~ Batch, Dyestuff2)
 (D2summary <- summary(D2aov))
 (sigma2_with <- D2summary[[1]]$`Mean Sq`[2])
@@ -237,7 +344,6 @@ D2REML <- broom::tidy(D2REML)
 Despite the fact that the result for $\sigma_{btw}$ is reported as $0$, we can observe some slight variation between batches using a dotplot (reordering the Batches to produce a smoother average line).
 
 ```{r}
-require(lattice)
 dotplot(reorder(Batch, Yield) ~ Yield, Dyestuff2,
         ylab = "Batch", jitter.y = TRUE, aspect = 0.3,
         type = c("p","a"))
@@ -248,37 +354,34 @@ As a side note, the creator of the lme4 package that contains the Dyestuff2 data
 effects in the model"} -- page 25 here: http://lme4.r-forge.r-project.org/lMMwR/lrgprt.pdf.
 
 (b)  Use WinBUGS for a Bayesian analysis of (a), and find reasonable point and interval estimates for $\sigma_1^2$ and $\sigma_2^2$. Include graphs, including one of the joint posterior. [6 marks] 
+
 Before we begin, I've relabelled the ICC variable as ICC, instead of rho -- which I had previously -- just to keep things consistent. Also, I found methods for using the ICC method for models with more that two levels but didn't have time to go into them too much: I don't know if they automatically solve the issues we were discussing in class or not, although I assume they would.
 
 I'll be using \textbf{OpenBUGS} and an \textbf{R} package called \textbf{R2OpenBUGS} to run these simulations.
 
-```{r Question2b, eval=FALSE}
+```{r Question2b, cache = TRUE}
 #define the model
-library(R2OpenBUGS)
 dyesmodel <- function(){
   for(i in 1 : batches) {
     m[i] ~ dnorm(theta,  tau.btw)
     for(j in 1 : samples) {
      y[j , i] ~ dnorm(m[i], tau.with)
-    }
-  }
+}}
   sigma2.with <- 1/tau.with
   tau.with ~ dgamma(0.001, 0.001)
-  
   ICC ~ dunif(0,1)
   sigma2.btw <- sigma2.with*(ICC/(1-ICC))
   tau.btw <- 1/sigma2.btw
   theta ~ dflat()
-  }
+}
+
 # write the model code out to a file
 write.model(dyesmodel, "dyesmodel.txt")
 model.file1 = paste(getwd(),"dyesmodel.txt", sep="/")
-library(lme4)
-data("Dyestuff2")
+
 #prepare the data for input into OpenBUGS
-batches <- 6
-samples <- 5
-y <- tbl_df(Dyestuff2) %>%
+batches <- 6; samples <- 5
+y <- tbl_df(Dyestuff2) %>% 
   mutate(samp = rep(seq(1,5,1),6)) %>%
   spread(Batch, Yield) %>%
   dplyr::select(-1)
@@ -287,53 +390,45 @@ y <- as.matrix(y)
 data <- list ("batches","samples","y")
 
 #initialization of variables
-inits <- function(){
-  list(theta=5, tau.with=1, ICC=0.5)
-}
-
-WINE="/opt/local/bin/wine"
-WINEPATH="/opt/local/bin/winepath"
-OpenBUGS.pgm=paste0("/Users/benjamin/Applications/wine/",
-                    "drive_c/ProgramFiles/OpenBUGS/OpenBUGS323/OpenBUGS.exe")
+inits <- function(){list(theta=5, tau.with=1, ICC=0.5)}
 
 #these are the parameters to save
-parameters = c("sigma2.with","theta","sigma2.btw")
+parameters = c("sigma2.with","theta","sigma2.btw","ICC")
 
 #run the model
-dyes.sim <- bugs(data, 
-                 inits, 
-                 model.file = model.file1,
-                 parameters=parameters,
-                 n.burnin = 2000,
-                 n.chains = 5, 
-                 n.iter = 30000, 
-                 OpenBUGS.pgm=OpenBUGS.pgm, 
-                 WINE=WINE, 
-                 WINEPATH=WINEPATH,
-                 useWINE=T,
-                 codaPkg = T,
-                 debug = T)
-# print(dyes.sim)
-# dyes.sim$summary
+dyes.sim <- bugs(
+  data, inits, model.file = model.file1, parameters=parameters, 
+  n.burnin = 1000, n.chains = 3, n.iter = 20000, 
+  OpenBUGS.pgm=paste0("/Users/benjamin/Applications/wine/",
+                      "drive_c/ProgramFiles/OpenBUGS/OpenBUGS323/OpenBUGS.exe"), 
+  WINE="/opt/local/bin/wine", WINEPATH="/opt/local/bin/winepath", useWINE=T)
+attach.bugs(dyes.sim)
+kable(dyes.sim$summary, digits = getOption("digits"))
+```
 
-out.coda <- read.bugs(dyes.sim)
+Here are the HPD intervals for each parameter.
+```{r}
 library(coda)
-library(lattice)
-plot(out.coda)
-HPDinterval(out.coda)
-batchSE(out.coda)
-densityplot(out.coda)
-acfplot(out.coda)
-gelman.diag(out.coda)
-gelman.plot(out.coda)
-out.summary <- summary(out.coda, q=c(0.025, 0.975))
-out.summary
-out.summary$stat["sigma2.with",]
-# out.summary$q["sigma2.with", ]
-out.summary$stat["sigma.btw",]
-# out.summary$q["sigma2.btw", ]
-out.summary$stat["theta",]
-# out.summary$q["theta", ]
+dye <- as.mcmc.list(dyes.sim)
+HPDinterval(dye)[[1]]
+```
+
+```{r Q2bplot}
+
+dyessimlist <- tbl_df(dyes.sim$sims.list)
+densityplot(dyessimlist$sigma2.with, xlab = "Sigma2.with")
+densityplot(dyessimlist$sigma2.btw, xlab = "Sigma2.btw")
+densityplot(dyessimlist$theta, xlab = "theta")
+densityplot(dyessimlist$ICC, xlab = "ICC")
+
+df <- tbl_df(cbind(rBtw = dyessimlist$sigma2.btw, rWith = dyessimlist$sigma2.with))
+ggplot(data = df, aes(x=rWith,y=rBtw)) + 
+  geom_point(size=0.1, colour = "red", alpha = 0.1) +
+  geom_density_2d() +
+  coord_cartesian(xlim = c(0,30), ylim = c(0,15)) +
+  theme_few() +
+  labs(x="sigma2.btw",y="sigma2.with",
+       title="Contours of the posterior distribution of (sigma2.btw, sigma2.with)")
 ```
 
 (c) Box & Tiao also studied a 3-component model (Table 5.3.1). 
@@ -352,16 +447,15 @@ df <- readRDS("Question2/Data/Q2c.rds")
 (m2 <- (BT3[[1]]$`Mean Sq`[2]-BT3[[1]]$`Mean Sq`[3])/2)
 (m3 <- (BT3[[1]]$`Mean Sq`[1]-BT3[[1]]$`Mean Sq`[2])/4)
 (mAll <- m1+m2+m3)
-(m1/mAll)
-(m2/mAll)
-(m3/mAll)
+(c(m1/mAll,m2/mAll,m3/mAll))
 ```
 
-Next, the model for simulating in BUGS.
+Next, the model for simulating in BUGS. My problems with the models that follow concern whether or not to simulate the mean of each level to use to centre the next. Here I have generated values for the mean of each Batch (I), Sample (J) and Test (K) and used them to generate samples from the joint posterior. In the next model I followed the model that (I believe?) was laid out by Box and Tiao and instead assumed that each mean was normally distributed about $0$. Either way, each model type -- applied to either problem -- seemed to give me very different results from Box et. als original analysis, hence my confusion.
 
-```{r Q2cmodel}
+If I am wrong in both cases, my only thought is that I have entered the data in reverse: i.e. that instead of a $10 x 2 x 2$ sampling scheme, I've actually entered a $2 x 2 X 10$. Anyway, I digress.
+
+```{r Q2cmodel, cache = TRUE}
 #define the model
-library(R2OpenBUGS)
 threecompmodel <- function(){
 	for( i in 1 : I ) {
 		a[i] ~ dnorm(theta, tauI)
@@ -370,25 +464,18 @@ threecompmodel <- function(){
 			for( k in 1 : K ) {
 				e[i , j , k] <- mu0 + a[i] + b[i , j]
 				y[i , j , k] ~ dnorm(e[i , j , k], tauK)
-			}
-		}
-	}
+}}}
   
 	## Priors
-  
   theta ~ dnorm(0.0,1.00E-04) # Batch Mean
 	mu0   ~ dnorm(0.0,1.00E-04) # Sample Mean
-	
 	tauI  ~ dgamma(0.001, 0.001) # Between Batch variation
 	tauJ  ~ dgamma(0.001, 0.001) # Between Sample variation
 	tauK  ~ dgamma(0.001, 0.001) # Between Test variation
-	
 	sigma2I <- 1 / tauI
 	sigma2J <- 1 / tauJ
 	sigma2K <- 1 / tauK
-	
 	sigma2JK <- sigma2J / sigma2K
-	
 	denom <- sigma2I + sigma2J + sigma2K
 	r1 <- sigma2I / denom
 	r2 <- sigma2J / denom
@@ -400,102 +487,84 @@ model.file.3comp = paste(getwd(),"threecompmodelmodel.txt", sep="/")
 
 #prepare the data for input into OpenBUGS
   
-data <- 
-  list(I=10,J=2,K=2,y = structure(
-	      .Data=c(2.004,  2.713,  0.602,  0.252,
-                4.342,  4.229,  3.344,  3.057,
-                0.869, -2.621, -3.896, -3.696,
-                3.531,  4.185,  1.722,  0.380,
-                2.579,  4.271, -2.101,  0.651,
-               -1.404, -1.003, -0.755, -2.202,
-               -1.676, -0.208, -9.139, -8.653,
-                1.670,  2.426,  1.834,  1.200,
-                2.141,  3.527,  0.462,  0.665,
-               -1.229, -0.596,  4.471,  1.606),
-	      .Dim=c(10,2,2)
-))
+data <- list(I=10,J=2,K=2,
+             y = structure(
+               .Data=c(2.004,  2.713,  0.602,  0.252,
+                       4.342,  4.229,  3.344,  3.057,
+                       0.869, -2.621, -3.896, -3.696,
+                       3.531,  4.185,  1.722,  0.380,
+                       2.579,  4.271, -2.101,  0.651,
+                      -1.404, -1.003, -0.755, -2.202,
+                      -1.676, -0.208, -9.139, -8.653,
+                       1.670,  2.426,  1.834,  1.200,
+                       2.141,  3.527,  0.462,  0.665,
+                      -1.229, -0.596,  4.471,  1.606),
+               .Dim=c(10,2,2)))
 
 #initialization of variables
 inits <- function(){
-  list(
-    mu0 = 0,
-  theta=0,
-  a = c(0,0,0,0,0,0,0,0,0,0),
-	b = structure(
-	      .Data = c(0,0,0,0,0,0,0,0,0,0,
-	                0,0,0,0,0,0,0,0,0,0),
-	      .Dim = c(10,2)
-	      ),
-  tauI = 1.0,
-  tauJ = 1.0,
-  tauK = 1.0
-)
+  list(mu0 = 0,theta=0,
+       a = c(0,0,0,0,0,0,0,0,0,0),
+	     b = structure(.Data = c(0,0,0,0,0,0,0,0,0,0,
+	                             0,0,0,0,0,0,0,0,0,0),
+	                   .Dim = c(10,2)),
+       tauI = 1.0,tauJ = 1.0,tauK = 1.0)
 }
-
-WINE="/opt/local/bin/wine"
-WINEPATH="/opt/local/bin/winepath"
-OpenBUGS.pgm=paste0("/Users/benjamin/Applications/wine/",
-                    "drive_c/ProgramFiles/OpenBUGS/OpenBUGS323/OpenBUGS.exe")
-
 #these are the parameters to save
 parameters = c("sigma2I","sigma2J","sigma2K", "sigma2JK", "r1", "r2", "r3")
 
 #run the model
-threecomp.sim <- bugs(data, 
-                   inits, 
-                   model.file = model.file.3comp,
-                   parameters=parameters,
-                   n.burnin = 5000,
-                   n.chains = 5, 
-                   n.iter = 50000, 
-                   OpenBUGS.pgm=OpenBUGS.pgm, 
-                   WINE=WINE, 
-                   WINEPATH=WINEPATH,
-                   useWINE=T,
-                   codaPkg = F,
-                   debug = F)
+threecomp.sim <- bugs(data, inits, model.file = model.file.3comp, parameters=parameters,
+                      n.burnin = 1000, n.chains = 3, n.iter = 20000, 
+                      OpenBUGS.pgm=paste0("/Users/benjamin/Applications/wine/",
+                                          "drive_c/ProgramFiles/OpenBUGS/OpenBUGS323/OpenBUGS.exe"), 
+                      WINE="/opt/local/bin/wine", WINEPATH="/opt/local/bin/winepath",useWINE=T)
+attach.bugs(threecomp.sim)
+kable(threecomp.sim$summary,digits = getOption("digits"))
+```
 
+Here are the HPD intervals for each parameter.
+```{r}
+library(coda)
+threec <- as.mcmc.list(threecomp.sim)
+HPDinterval(threec)[[1]]
 ```
 
 ```{r Q2cplot}
-library(ggplot2)
-library(ggtern)
-attach.bugs(threecomp.sim)
-
 threecompsimlist <- tbl_df(threecomp.sim$sims.list)
 
-# densityplot(threecompsimlist$sigma2I)
-# densityplot(threecompsimlist$sigma2J)
-# densityplot(threecompsimlist$sigma2K)
+densityplot(threecompsimlist$sigma2I, xlab = "Sigma2I")
+densityplot(threecompsimlist$sigma2J, xlab = "Sigma2J")
+densityplot(threecompsimlist$sigma2K, xlab = "Sigma2K")
 
-# sig2I <- threecompsimlist$sigma2I
-# sig2J <- threecompsimlist$sigma2J
-# sig2K <- threecompsimlist$sigma2K
+df <- tbl_df(cbind(rBatches = threecompsimlist$r1,
+                   rSamples = threecompsimlist$r2,
+                   rTests = threecompsimlist$r3))
 
-df <- tbl_df(threecompsimlist$r1)
-df <- tbl_df(cbind(rBatches = threecompsimlist$sigma2I, rSamples = threecompsimlist$sigma2J, rTests = threecompsimlist$sigma2K))
-denom <- sum(threecomp.sim$summary[1:3,1])
-
-rI <- threecomp.sim$summary[1,1]/denom
-rJ <- threecomp.sim$summary[2,1]/denom
-rK <- threecomp.sim$summary[3,1]/denom
-
+ggplot(data = threecompsimlist, aes(x=sigma2K,y=sigma2J)) + 
+  geom_point(size=0.1, colour = "red", alpha = 0.1) +
+  geom_density_2d() +
+  coord_cartesian(xlim = c(0,20), ylim = c(0,1)) +
+  theme_few() +
+  labs(x="sigma2K",y="sigma2J",
+       title="Contours of the posterior distribution of (sigma2J, sigma2K)")
+```
+```{r, fig.height=4,fig.width=8}
 ggtern(data = df, aes(x=rBatches,z=rSamples,y=rTests)) + 
   theme_rgbw() +
-  geom_point(size=0.1, colour = "red") +
+  geom_point(size=0.1, colour = "red", alpha = 0.25) +
   geom_confidence_tern(breaks = c(0.95)) + 
   theme_clockwise() +
-  labs(x="Batches",z="Samples",y="Tests",title="Contours of the posterior distribution of (r1, r2, r3)")
-
+  labs(x="Batches",z="Samples",y="Tests",
+       title="Contours of the posterior distribution of (r1, r2, r3)")
 ```
 
 (d) Box, Hunter & Hunter (1976, Chapter 17.3) studied a pigment paste example with three components, focusing on point estimates only. Use WinBUGS again to perform a Bayesian analysis. Include graphs.
 
 Again, any issues that are present in the model above will be reproduced here.
 
-```{r Q2dmodel}
+```{r Q2dmodel, cache = TRUE}
 #define the model
-library(R2OpenBUGS)
 pigmentmodel <- function(){
 	for( i in 1 : I ) {
 		a[i] ~ dnorm(0.0, tauI)
@@ -504,24 +573,17 @@ pigmentmodel <- function(){
 			for( k in 1 : K ) {
 				e[i , j , k] <- theta + a[i] + b[i , j]
 				y[i , j , k] ~ dnorm(e[i , j , k], tauK)
-			}
-		}
-	}
+  }}}
   
 	## Priors
-  
   theta ~ dflat() # sample mean
-	
 	tauI ~ dgamma(0.001, 0.001) # Between Batch variation
 	tauJ ~ dgamma(0.001, 0.001) # Between Sample variation
 	tauK ~ dgamma(0.001, 0.001) # Between Test variation
-	
 	sigma2I <- 1 / tauI
 	sigma2J <- 1 / tauJ
 	sigma2K <- 1 / tauK
-	
 	sigma2JK <- sigma2J / sigma2K
-	
 	denom <- sigma2I + sigma2J + sigma2K
 	r1 <- sigma2I / denom
 	r2 <- sigma2J / denom
@@ -533,40 +595,34 @@ model.file.pigment = paste(getwd(),"dyes2model.txt", sep="/")
 
 #prepare the data for input into OpenBUGS
   
-data <- 
-  list(I=15,J=2,K=2,y = structure(
-	      .Data=c(40,39,30,30,
-	              26,28,25,26,
-	              29,28,14,15,
-	              30,31,24,24,
-	              19,20,17,17,
-	              33,32,26,24,
-	              23,24,32,33,
-	              34,34,29,29,
-	              27,27,31,31,
-	              13,16,27,24,
-	              25,23,25,27,
-	              29,29,31,32,
-	              19,20,29,30,
-	              23,23,25,25,
-	              39,37,26,28),
-	      .Dim=c(15,2,2)
-))
+data <- list(I=15,J=2,K=2,
+             y = structure(
+               .Data=c(40,39,30,30,
+                       26,28,25,26,
+	                     29,28,14,15,
+	                     30,31,24,24,
+	                     19,20,17,17,
+	                     33,32,26,24,
+	                     23,24,32,33,
+	                     34,34,29,29,
+	                     27,27,31,31,
+	                     13,16,27,24,
+	                     25,23,25,27,
+	                     29,29,31,32,
+	                     19,20,29,30,
+	                     23,23,25,25,
+	                     39,37,26,28),
+               .Dim=c(15,2,2)))
 
 #initialization of variables
 inits <- function(){
-  list(
-  theta=0,
-  a = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0),
-	b = structure(
-	      .Data = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-	                0,0,0,0,0,0,0,0,0,0,0,0,0,0,0),
-	      .Dim = c(15,2)
-	      ),
-  tauI = 1.0,
-  tauJ = 1.0,
-  tauK = 1.0
-)
+  list(theta=0,
+       a = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0),
+	     b = structure(
+	       .Data = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	                 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0),
+	       .Dim = c(15,2)),
+  tauI = 1.0,tauJ = 1.0,tauK = 1.0)
 }
 
 WINE="/opt/local/bin/wine"
@@ -578,40 +634,39 @@ OpenBUGS.pgm=paste0("/Users/benjamin/Applications/wine/",
 parameters = c("sigma2I","sigma2J","sigma2K", "sigma2JK", "r1", "r2", "r3")
 
 #run the model
-pigment.sim <- bugs(data, 
-                   inits, 
-                   model.file = model.file.pigment,
-                   parameters=parameters,
-                   n.burnin = 100,
-                   n.chains = 5, 
-                   n.iter = 1000, 
-                   OpenBUGS.pgm=OpenBUGS.pgm, 
-                   WINE=WINE, 
-                   WINEPATH=WINEPATH,
-                   useWINE=T,
-                   codaPkg = F,
-                   debug = F)
+pigment.sim <- bugs(
+  data, inits, model.file = model.file.pigment, parameters=parameters,
+  n.burnin = 1000, n.chains = 3, n.iter = 20000, 
+  OpenBUGS.pgm=paste0("/Users/benjamin/Applications/wine/",
+                      "drive_c/ProgramFiles/OpenBUGS/OpenBUGS323/OpenBUGS.exe"), 
+  WINE="/opt/local/bin/wine", WINEPATH="/opt/local/bin/winepath", useWINE = T)
+attach.bugs(pigment.sim)
+kable(pigment.sim$summary,digits = getOption("digits"))
+```
 
+Here are the HPD intervals for each parameter.
+```{r}
+library(coda)
+pig <- as.mcmc.list(pigment.sim)
+HPDinterval(pig)[[1]]
 ```
 
 ```{r Q2dplot}
-library(ggplot2)
-library(ggtern)
-attach.bugs(pigment.sim)
 
 pigsimlist <- tbl_df(pigment.sim$sims.list)
 
-sig2I <- pigsimlist$sigma2I
-sig2J <- pigsimlist$sigma2J
-sig2K <- pigsimlist$sigma2K
+densityplot(pigsimlist$sigma2I, xlab = "Sigma2I")
+densityplot(pigsimlist$sigma2J, xlab = "Sigma2I")
+densityplot(pigsimlist$sigma2K, xlab = "Sigma2I")
 
-df <- tbl_df(pigsimlist$r1)
 df <- tbl_df(cbind(rBatches = pigsimlist$r1, rSamples = pigsimlist$r2, rTests = pigsimlist$r3))
-
+```
+```{r, fig.height=4,fig.width=8}
 ggtern(data=df,aes(x=rBatches,z=rSamples,y=rTests)) + 
   theme_rgbw() +
   geom_point(size=0.1, colour = "red") +
   geom_confidence_tern(breaks = c(0.5,0.7,0.9)) + 
   theme_clockwise() +
-  labs(x="Batches",z="Samples",y="Tests",title="Title")
+  labs(x="Batches",z="Samples",y="Tests",
+       title="Contours of the posterior distribution of (r1, r2, r3)")
 ```

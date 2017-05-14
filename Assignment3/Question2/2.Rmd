@@ -1,0 +1,16 @@
+The Gaussian likelihood is given by Phillips as 
+
+$$
+f(y | \rho, \sigma, y_0) \ = (2\pi)^{-T/2}\sigma^{-T}exp \left\{-(1/2)\sigma^{-2\sum_1^T}(y_t - \rho y_{t-1}) \right\},
+$$
+    
+which -- assuming a flat prior for $(\rho, log(\sigma))$ -- leads to the uninformative prior for $(\rho, \sigma): \pi(\rho, \sigma) \propto 1/\sigma$. 
+
+
+### Reference Prior
+
+Berger & Yang (1994) derive the reference prior -- see equation \textbf{(18)} -- strictly for AR(1) models with $|\rho| \leq 1$ (as $T \to \infty$) as:
+
+$$
+\pi_{_{Ref}}(\rho) = (1-\rho^2)^{-1/2}
+$$

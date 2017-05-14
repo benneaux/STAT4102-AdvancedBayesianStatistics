@@ -1,0 +1,61 @@
+---
+title: "Assignment 2"
+date: "`r Sys.Date()`"
+output:  
+  pdf_document:
+geometry: margin=1.5cm
+
+---
+
+```{r DocSetup, include = FALSE}
+require(knitr)
+opts_chunk$set(warning = FALSE, cache = FALSE, echo = FALSE)
+opts_chunk$set(fig.height = 3, fig.width = 7,fig.align = "center")
+```
+
+
+
+```{r Q1Setup, include = FALSE}
+source("setup.R")
+```
+
+
+## Question 1: 
+
+Consider data on Foot-and-Mouth disease (FMDdata.xls) with the foal of assessing the difference in incidence between the eastern and western regions of Turkey, based on data from 1998:
+
+(a) Apply classical Poisson regression to the FMD counts, with region and size of cattle population (standardised) as covariates. Check model diagnostics. [10 marks]
+
+```{r child = "Question1/1a.Rmd"}
+```
+
+
+(b) Repeat (a), using a Bayesian approach, and compare results. [10 marks]
+
+```{r child = "Question1/1b.Rmd"}
+```
+
+(c) Use a Bayesian zero-inflated Poisson (ZIP) model instead. [10 marks]
+
+```{r child = "Question1/1c.Rmd"}
+```
+
+
+(d) Compare the above two Bayesian models and, for your model of choice, report on any difference in mean FMD occurrence for eastern vs western Turkey. [10 marks]
+
+\newpage
+
+## Question 2:
+
+Consider the AR(1) model (see Phillips, 1991 and Berger & Yang, 1994):
+
+Assuming that $| \rho | \leq 1$, compare posteriors (and intervals) arising from the uniform prior and the reference prior for some generated data sets, based on \emph{e.g} $\rho = 0.1$ and $\rho =0.99$, and sample sizes $n = 50$ and $n = 200$. Also compare with confidence intervals.
+
+```{r child = "Question2/2.Rmd"}
+```
+
+## References 
+```{r child = "Ref.Rmd"}
+```
+
+

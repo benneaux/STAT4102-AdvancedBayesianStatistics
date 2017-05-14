@@ -1,0 +1,3 @@
+Berger, J., & Yang, R. (1991). Noninformative Priors and Bayesian Testing for the AR ( 1 ) Model. Econometric Theory, 10(3/4), 461–482. Retrieved from http://www.jstor.org/stable/3532546
+
+Phillips, P. (1991). To Criticize the Critics: An Objective Bayesian Analysis of Stochastic Trends. Journal of Applied Econometrics, 6(4), 333-364. Retrieved from http://www.jstor.org/stable/2096686

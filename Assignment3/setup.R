@@ -1,0 +1,5 @@
+library(knitr)
+library(tidyverse)
+library(lmtest)
+library(broom)
+library(MCMCpack)

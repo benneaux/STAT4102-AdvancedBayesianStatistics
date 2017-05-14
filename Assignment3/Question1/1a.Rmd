@@ -1,0 +1,47 @@
+Firstly let's import the data
+
+```{r, include = FALSE}
+FMDData <- readRDS("~/R/STAT4102-AdvancedBayesianStatistics/Assignment3/Question1/Data/FMDData.rds")
+
+FMDData2 <- FMDData %>%
+  mutate(StCattle = (Cattle-mean(Cattle))/sd(Cattle)) %>%
+  dplyr::select(-c(Province,Cattle))
+
+FMDData3 <- FMDData %>%
+  mutate(StCattle = (Cattle-mean(Cattle))/sd(Cattle)) %>%
+  dplyr::select(-Cattle)
+
+
+fm_pois <- glm(FMD1998 ~ .,data = FMDData2, family = poisson)
+fm_poisInteraction <- glm(FMD1998 ~ EasternTurkey*StCattle, data = FMDData2, family = poisson)
+fm_poisCattle <- glm(FMD1998 ~ StCattle, data = FMDData2,  family = poisson)
+```
+
+
+```{r}
+kable(head(FMDData), caption = "Raw FMD dataset")
+```
+
+Let's remove the unnecessary variables (**Province**) and standardise the **Cattle** variable
+
+```{r}
+kable(head(FMDData2), caption = "FMD dataset with standardised Cattle values")
+```
+
+Next, we fit a basic GLM using the poisson family option in R: *fm_pois <- glm(FMD1998 ~ .,data = FMDData2, family = poisson)*
+
+```{r}
+kable(tidy(fm_pois), caption = "Model Output")
+kable(glance(fm_pois), caption = "Model Summary")
+```
+
+It seems as if the only significant covariate is the (standardised) **Cattle** variable; the **EasternTurkey** region variable does not return a signifcant ($\alpha \leq 0.05$) p value.
+
+Just to check that we aren't missing anything, let's also look at the model summaries for the model including an interaction term **StCattle x EasternTurkey** and the model with only **StCattle** as a covariate.
+
+```{r}
+kable(glance(fm_poisInteraction), caption = "Model (with Interaction term) Summary")
+kable(glance(fm_poisCattle), caption = "Model (only StCattle) Summary")
+```
+
+The original model and the model with only the **StCattle** covariate are -- unsurprisingly -- the best performing models, given that we found the **EasternTurkey** covariate to be insignificant at the beginnning. Whilst the origial model proves the superior one when comparing **deviance, AIC, BIC** and **logLik** scores, the **StCattle** model does have an extra degree of freedom for the residuals, which might be desirable.
